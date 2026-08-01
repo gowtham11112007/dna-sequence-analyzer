@@ -197,9 +197,25 @@ export default function Dock({
   return (
     <motion.div style={{ height, scrollbarWidth: 'none' }} className="dock-outer">
       <motion.div
-        onMouseMove={({ pageX }) => {
+        onMouseMove={({ clientX }) => {
           isHovered.set(1);
-          mouseX.set(pageX);
+          mouseX.set(clientX);
+        }}
+        onTouchStart={(e) => {
+          if (e.touches.length > 0) {
+            isHovered.set(1);
+            mouseX.set(e.touches[0].clientX);
+          }
+        }}
+        onTouchMove={(e) => {
+          if (e.touches.length > 0) {
+            isHovered.set(1);
+            mouseX.set(e.touches[0].clientX);
+          }
+        }}
+        onTouchEnd={() => {
+          isHovered.set(0);
+          mouseX.set(Infinity);
         }}
         onMouseLeave={() => {
           isHovered.set(0);

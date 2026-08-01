@@ -1947,42 +1947,19 @@ body {
 /* ── Dock Navigation Wrapper (Fixed Bottom) ── */
 .dock-nav-wrapper {
   position: fixed;
-  bottom: 0;
+  bottom: 12px;
   left: 0;
   right: 0;
   z-index: 1000;
   display: flex;
   justify-content: center;
   pointer-events: none;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .dock-nav-wrapper .dock-outer {
   pointer-events: auto;
 }
 
-/* Override Dock panel background to match app theme */
-.dock-nav-wrapper .dock-panel {
-  background: rgba(8, 12, 24, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-color: rgba(34, 211, 238, 0.15);
-  box-shadow:
-    0 -4px 30px rgba(0, 0, 0, 0.4),
-    0 0 15px rgba(34, 211, 238, 0.08);
-  gap: 0.75rem;
-  padding: 0 0.75rem 0.5rem;
-}
 
-.dock-nav-wrapper .dock-item {
-  background: rgba(14, 18, 32, 0.9);
-  border-color: rgba(255, 255, 255, 0.08);
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.dock-nav-wrapper .dock-label {
-  background: rgba(8, 12, 24, 0.95);
-  border-color: rgba(34, 211, 238, 0.3);
-  color: var(--accent-a);
-  font-weight: 600;
-  font-family: var(--font-sans);
-}

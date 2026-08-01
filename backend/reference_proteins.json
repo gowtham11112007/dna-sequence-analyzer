@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Human Insulin A Chain",
+    "uniprot_accession": "P01308",
+    "sequence": "GIVEQCCTSICSLYQLENYCN",
+    "description": "Insulin A chain — regulates glucose metabolism"
+  },
+  {
+    "name": "Human Insulin B Chain",
+    "uniprot_accession": "P01308",
+    "sequence": "FVNQHLCGSHLVEALYLVCGERGFFYTPKT",
+    "description": "Insulin B chain — regulates glucose metabolism"
+  },
+  {
+    "name": "Human Hemoglobin Beta Subunit (N-terminal)",
+    "uniprot_accession": "P68871",
+    "sequence": "MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAFSDGLAHLDNLKGTFATLSELHCDKLHVDPENFRLLGNVLVCVLAHHFGKEFTPPVQAAYQKVVAGVANALAHKYH",
+    "description": "Hemoglobin subunit beta — oxygen transport in blood"
+  },
+  {
+    "name": "Oxytocin Precursor Fragment",
+    "uniprot_accession": "P01178",
+    "sequence": "CYIQNCPLG",
+    "description": "Oxytocin neuropeptide — involved in social bonding and childbirth"
+  },
+  {
+    "name": "Ubiquitin",
+    "uniprot_accession": "P0CG48",
+    "sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+    "description": "Ubiquitin — protein degradation signaling tag"
+  }
+]

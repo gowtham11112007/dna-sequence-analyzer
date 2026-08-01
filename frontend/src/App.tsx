@@ -8,7 +8,7 @@
  *   • Mobile Bottom Navigation Bar & Top Screen Headers
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import SequenceBuilder from './SequenceBuilder'
 import ResultsDisplay from './ResultsDisplay'
 import DnaHelixCanvas from './DnaHelixCanvas'
@@ -17,8 +17,10 @@ import CodonWheel from './CodonWheel'
 import FastaExporter from './FastaExporter'
 import { analyzeDNA } from './api'
 import type { AnalyzeResult } from './api'
+import Dock from './Dock'
+import type { DockItemData } from './Dock'
 
-export type ScreenType = 'builder' | 'results' | 'export' | 'codons'
+export type ScreenType = 'builder' | 'results' | 'codons'
 
 export default function App() {
   // --- State ---
@@ -51,6 +53,31 @@ export default function App() {
       setLoading(false)
     }
   }, [sampleSeq, isValid])
+
+  // --- Dock navigation items (memoized for Dock component) ---
+  const dockItems: DockItemData[] = useMemo(
+    () => [
+      {
+        icon: <span style={{ fontSize: 22 }}>🧬</span>,
+        label: 'Builder',
+        onClick: () => setCurrentScreen('builder'),
+        className: currentScreen === 'builder' ? 'dock-item-active' : '',
+      },
+      {
+        icon: <span style={{ fontSize: 22 }}>📊</span>,
+        label: 'Results',
+        onClick: () => setCurrentScreen('results'),
+        className: currentScreen === 'results' ? 'dock-item-active' : '',
+      },
+      {
+        icon: <span style={{ fontSize: 22 }}>📖</span>,
+        label: 'Codons',
+        onClick: () => setCurrentScreen('codons'),
+        className: currentScreen === 'codons' ? 'dock-item-active' : '',
+      },
+    ],
+    [currentScreen]
+  )
 
   return (
     <div className="app phone-optimized-app">
@@ -85,14 +112,7 @@ export default function App() {
           📊 Results
           {analyzeResult && <span className="nav-pulse-dot" />}
         </button>
-        <button
-          className={`screen-nav-btn ${currentScreen === 'export' ? 'active' : ''}`}
-          onClick={() => setCurrentScreen('export')}
-          disabled={sampleSeq.length === 0}
-          type="button"
-        >
-          💾 Export / Download
-        </button>
+
         <button
           className={`screen-nav-btn ${currentScreen === 'codons' ? 'active' : ''}`}
           onClick={() => setCurrentScreen('codons')}
@@ -157,18 +177,9 @@ export default function App() {
             >
               ← Edit DNA Sequence
             </button>
-            {analyzeResult && (
-              <button
-                className="btn-forward-nav"
-                onClick={() => setCurrentScreen('export')}
-                type="button"
-              >
-                📥 Download Results File →
-              </button>
-            )}
           </div>
 
-          {/* Results display panel */}
+          {/* Results display panel — full width */}
           <ResultsDisplay
             analyzeResult={analyzeResult}
             compareResult={null}
@@ -176,40 +187,15 @@ export default function App() {
             error={error}
           />
 
-          {/* Bottom Action Footer on Results Screen */}
-          {analyzeResult && (
-            <div className="results-footer-action animate-in">
-              <button
-                className="btn-submit pulse-glow-btn"
-                onClick={() => setCurrentScreen('export')}
-                type="button"
-              >
-                💾 Export & Download Report Files (FASTA / JSON) →
-              </button>
+          {/* Export section inlined at the bottom of Results */}
+          {analyzeResult && sampleSeq.length > 0 && (
+            <div className="results-inline-export animate-in">
+              <FastaExporter
+                sampleSeq={sampleSeq}
+                analyzeResult={analyzeResult}
+              />
             </div>
           )}
-        </div>
-      )}
-
-      {/* =========================================================
-          SCREEN 3: DEDICATED EXPORT & DOWNLOAD PAGE
-         ========================================================= */}
-      {currentScreen === 'export' && (
-        <div className="screen-view export-screen animate-in">
-          <div className="view-action-bar">
-            <button
-              className="btn-back-nav"
-              onClick={() => setCurrentScreen(analyzeResult ? 'results' : 'builder')}
-              type="button"
-            >
-              ← {analyzeResult ? 'Back to Results' : 'Back to Builder'}
-            </button>
-          </div>
-
-          <FastaExporter
-            sampleSeq={sampleSeq}
-            analyzeResult={analyzeResult}
-          />
         </div>
       )}
 
@@ -233,47 +219,17 @@ export default function App() {
       )}
 
       {/* =========================================================
-          MOBILE BOTTOM NAVIGATION BAR (FIXED ON PHONE SCREENS)
+          ANIMATED DOCK NAVIGATION (REPLACES STATIC BOTTOM NAV)
          ========================================================= */}
-      <nav className="mobile-bottom-nav">
-        <button
-          className={`mobile-nav-item ${currentScreen === 'builder' ? 'active' : ''}`}
-          onClick={() => setCurrentScreen('builder')}
-          type="button"
-        >
-          <span className="mobile-nav-icon">🧬</span>
-          <span className="mobile-nav-label">Builder</span>
-        </button>
-
-        <button
-          className={`mobile-nav-item ${currentScreen === 'results' ? 'active' : ''}`}
-          onClick={() => setCurrentScreen('results')}
-          type="button"
-        >
-          <span className="mobile-nav-icon">📊</span>
-          <span className="mobile-nav-label">Results</span>
-          {analyzeResult && <span className="mobile-badge-dot" />}
-        </button>
-
-        <button
-          className={`mobile-nav-item ${currentScreen === 'export' ? 'active' : ''}`}
-          onClick={() => setCurrentScreen('export')}
-          disabled={sampleSeq.length === 0}
-          type="button"
-        >
-          <span className="mobile-nav-icon">💾</span>
-          <span className="mobile-nav-label">Export</span>
-        </button>
-
-        <button
-          className={`mobile-nav-item ${currentScreen === 'codons' ? 'active' : ''}`}
-          onClick={() => setCurrentScreen('codons')}
-          type="button"
-        >
-          <span className="mobile-nav-icon">📖</span>
-          <span className="mobile-nav-label">Codons</span>
-        </button>
-      </nav>
+      <div className="dock-nav-wrapper">
+        <Dock
+          items={dockItems}
+          panelHeight={64}
+          baseItemSize={48}
+          magnification={68}
+          distance={150}
+        />
+      </div>
     </div>
   )
 }

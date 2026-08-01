@@ -53,8 +53,15 @@ export default function FastaExporter({
     const a = document.createElement('a')
     a.href = url
     a.download = `dna_analysis_report_${Date.now()}.json`
+    // Mobile browsers require the anchor to be in the DOM for click() to trigger download
+    a.style.display = 'none'
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 100)
   }
 
   return (

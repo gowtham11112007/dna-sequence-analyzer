@@ -1860,9 +1860,6 @@ body {
 
 /* Phone Screen Media Query Optimization (< 768px) */
 @media (max-width: 768px) {
-  .mobile-bottom-nav {
-    display: flex;
-  }
 
   .screen-nav-bar {
     display: none; /* Hide top bar on phones in favor of bottom nav bar */
@@ -1885,6 +1882,107 @@ body {
     font-size: 0.6rem;
     padding: 3px 10px;
   }
+
+  /* ── Full-width results on phones ── */
+  .app {
+    padding: 10px 8px 90px;
+  }
+
+  .glass-card {
+    padding: 16px 12px;
+    border-radius: 14px;
+  }
+
+  .results-panel {
+    gap: 14px;
+  }
+
+  .card-title {
+    font-size: 1rem;
+    margin-bottom: 14px;
+  }
+
+  .mrna-display {
+    padding: 10px;
+    gap: 6px;
+    max-height: none; /* Allow full expansion on mobile */
+  }
+
+  .amino-acid-chain {
+    gap: 6px;
+  }
+
+  .protein-details {
+    gap: 8px;
+  }
+
+  .protein-detail-row {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .match-progress-container {
+    margin-top: 12px;
+  }
+
+  .view-action-bar {
+    margin-bottom: 12px;
+  }
+
+  .btn-back-nav {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+
+  .results-placeholder {
+    padding: 40px 16px;
+  }
 }
 
+/* Inline Export section at the bottom of the Results screen */
+.results-inline-export {
+  margin-top: 24px;
+}
 
+/* ── Dock Navigation Wrapper (Fixed Bottom) ── */
+.dock-nav-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.dock-nav-wrapper .dock-outer {
+  pointer-events: auto;
+}
+
+/* Override Dock panel background to match app theme */
+.dock-nav-wrapper .dock-panel {
+  background: rgba(8, 12, 24, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-color: rgba(34, 211, 238, 0.15);
+  box-shadow:
+    0 -4px 30px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(34, 211, 238, 0.08);
+  gap: 0.75rem;
+  padding: 0 0.75rem 0.5rem;
+}
+
+.dock-nav-wrapper .dock-item {
+  background: rgba(14, 18, 32, 0.9);
+  border-color: rgba(255, 255, 255, 0.08);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.dock-nav-wrapper .dock-label {
+  background: rgba(8, 12, 24, 0.95);
+  border-color: rgba(34, 211, 238, 0.3);
+  color: var(--accent-a);
+  font-weight: 600;
+  font-family: var(--font-sans);
+}

@@ -2,10 +2,11 @@
  * App — root component for the DNA Sequence Analyzer.
  * Features a mobile-first multi-screen architecture:
  *   • Screen 1: Sequence Builder & Biophysics Analytics
- *   • Screen 2: Dedicated Prediction Results View
- *   • Screen 3: Dedicated Export & Download Page (FASTA / JSON)
- *   • Screen 4: 64-Codon Genetic Reference Matrix
- *   • Mobile Bottom Navigation Bar & Top Screen Headers
+ *   • Screen 2: Pro Biological Sequence & Function Library (DNA, RNA, Protein)
+ *   • Screen 3: Pro Bioinformatic Function Suite (RevComp, ORF, Cut Sites, Synthetic, Mutagenesis)
+ *   • Screen 4: Dedicated Prediction Results View
+ *   • Screen 5: 64-Codon Genetic Reference Matrix
+ *   • Mobile Bottom Navigation Dock & Top Screen Headers
  */
 
 import React, { useState, useCallback, useMemo } from 'react'
@@ -15,12 +16,14 @@ import DnaHelixCanvas from './DnaHelixCanvas'
 import SequenceAnalytics from './SequenceAnalytics'
 import CodonWheel from './CodonWheel'
 import FastaExporter from './FastaExporter'
+import SequenceLibrary from './SequenceLibrary'
+import ProTools from './ProTools'
 import { analyzeDNA } from './api'
 import type { AnalyzeResult } from './api'
 import Dock from './Dock'
 import type { DockItemData } from './Dock'
 
-export type ScreenType = 'builder' | 'results' | 'codons'
+export type ScreenType = 'builder' | 'library' | 'protools' | 'results' | 'codons'
 
 export default function App() {
   // --- State ---
@@ -54,6 +57,12 @@ export default function App() {
     }
   }, [sampleSeq, isValid])
 
+  // --- Load Sequence from Library or ProTools ---
+  const handleLoadSequence = useCallback((seq: string) => {
+    setSampleSeq(seq)
+    setCurrentScreen('builder')
+  }, [])
+
   // --- Dock navigation items (memoized for Dock component) ---
   const dockItems: DockItemData[] = useMemo(
     () => [
@@ -62,6 +71,18 @@ export default function App() {
         label: 'Builder',
         onClick: () => setCurrentScreen('builder'),
         className: currentScreen === 'builder' ? 'dock-item-active' : '',
+      },
+      {
+        icon: <span style={{ fontSize: 22 }}>📚</span>,
+        label: 'Library',
+        onClick: () => setCurrentScreen('library'),
+        className: currentScreen === 'library' ? 'dock-item-active' : '',
+      },
+      {
+        icon: <span style={{ fontSize: 22 }}>⚡</span>,
+        label: 'Pro Tools',
+        onClick: () => setCurrentScreen('protools'),
+        className: currentScreen === 'protools' ? 'dock-item-active' : '',
       },
       {
         icon: <span style={{ fontSize: 22 }}>📊</span>,
@@ -88,7 +109,7 @@ export default function App() {
           <div className="title-badge">🧬 BIOLOGICAL SEQUENCE PREDICTION</div>
           <h1>DNA Sequence Analyzer</h1>
           <p className="subtitle">
-            Interactive Base Builder · mRNA Transcription · Protein Match · Biophysics Analytics
+            Interactive Base Builder · DNA/RNA/Protein Library · Bioinformatic Pro Tools · Biophysics Analytics
           </p>
         </div>
       </header>
@@ -103,6 +124,20 @@ export default function App() {
           🧬 Builder
         </button>
         <button
+          className={`screen-nav-btn ${currentScreen === 'library' ? 'active' : ''}`}
+          onClick={() => setCurrentScreen('library')}
+          type="button"
+        >
+          📚 Sample Library
+        </button>
+        <button
+          className={`screen-nav-btn ${currentScreen === 'protools' ? 'active' : ''}`}
+          onClick={() => setCurrentScreen('protools')}
+          type="button"
+        >
+          ⚡ Pro Tools
+        </button>
+        <button
           className={`screen-nav-btn ${currentScreen === 'results' ? 'active' : ''} ${
             analyzeResult ? 'has-results' : ''
           }`}
@@ -112,7 +147,6 @@ export default function App() {
           📊 Results
           {analyzeResult && <span className="nav-pulse-dot" />}
         </button>
-
         <button
           className={`screen-nav-btn ${currentScreen === 'codons' ? 'active' : ''}`}
           onClick={() => setCurrentScreen('codons')}
@@ -156,15 +190,33 @@ export default function App() {
             </span>
           </button>
 
-          {/* Shortcut to Codon Reference */}
-          <div className="builder-footer-tip" onClick={() => setCurrentScreen('codons')}>
-            📖 Need to check amino acid codons? Open 64-Codon Reference Matrix ➔
+          {/* Shortcut to Library */}
+          <div className="builder-footer-tip" onClick={() => setCurrentScreen('library')}>
+            📚 Explore real-world DNA, RNA, and Protein presets in the Sample Library ➔
           </div>
         </div>
       )}
 
       {/* =========================================================
-          SCREEN 2: DEDICATED PREDICTION RESULTS VIEW
+          SCREEN 2: PRO SAMPLE & FUNCTION LIBRARY
+         ========================================================= */}
+      {currentScreen === 'library' && (
+        <div className="screen-view library-screen animate-in">
+          <SequenceLibrary onSelectSample={handleLoadSequence} />
+        </div>
+      )}
+
+      {/* =========================================================
+          SCREEN 3: PRO BIOINFORMATIC FUNCTION SUITE
+         ========================================================= */}
+      {currentScreen === 'protools' && (
+        <div className="screen-view protools-screen animate-in">
+          <ProTools currentSequence={sampleSeq} onLoadSequence={handleLoadSequence} />
+        </div>
+      )}
+
+      {/* =========================================================
+          SCREEN 4: DEDICATED PREDICTION RESULTS VIEW
          ========================================================= */}
       {currentScreen === 'results' && (
         <div className="screen-view results-screen animate-in">
@@ -200,7 +252,7 @@ export default function App() {
       )}
 
       {/* =========================================================
-          SCREEN 4: 64-CODON GENETIC MATRIX REFERENCE
+          SCREEN 5: 64-CODON GENETIC MATRIX REFERENCE
          ========================================================= */}
       {currentScreen === 'codons' && (
         <div className="screen-view codons-screen animate-in">
@@ -219,7 +271,7 @@ export default function App() {
       )}
 
       {/* =========================================================
-          ANIMATED DOCK NAVIGATION (REPLACES STATIC BOTTOM NAV)
+          ANIMATED DOCK NAVIGATION
          ========================================================= */}
       <div className="dock-nav-wrapper">
         <Dock

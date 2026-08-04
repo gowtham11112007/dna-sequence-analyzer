@@ -1,8 +1,8 @@
 /**
  * SequenceLibrary Component
- * Pro-level library containing extensive curated real-world samples of
- * DNA, RNA, and Protein sequences across multiple biological categories.
- * Supports real-time search, category filtering, FASTA metadata, and 1-click loading.
+ * Clean, modular Biological Sequence Library.
+ * Features compact cards with an interactive "👁️ View Specs & Details" modal
+ * to prevent visual clutter and give users complete control over what they see.
  */
 
 import React, { useState, useMemo } from 'react'
@@ -19,7 +19,6 @@ export interface LibrarySample {
   accession?: string
   description: string
   sequence: string
-  /** For RNA or Protein, optional DNA coding equivalent for live analysis */
   dnaEquivalent?: string
   functionTags: string[]
   gcContent?: number
@@ -138,7 +137,7 @@ export const SAMPLE_LIBRARY: LibrarySample[] = [
     organism: 'Homo sapiens',
     accession: 'tRNA-Phe-GAA',
     description: 'Classic cloverleaf-folded transfer RNA delivering Phenylalanine during ribosomal translation.',
-    sequence: 'GCCCGGAUAGCUCAGUCGGUAGAGCAGGGACUGAAAAUCCUCGUGUCGGCGGUUCGAUUCCGUCCUCGGGCACCA',
+    sequence: 'GCCCGGAUAGCUCAGUCGGUAGAGCAGGGACUGAAAAUCCUCGUGUCGGCGGUUCGAUUCCGUCCTCGGGCACCA',
     dnaEquivalent: 'GCCCGGATAGCTCAGTCGGTAGAGCAGGGACTGAAAATCCTCGTGTCGGCGGTTCGATTCCGTCCTCGGGCACCA',
     functionTags: ['tRNA', 'Translation', 'Non-Coding RNA'],
     gcContent: 63.2,
@@ -227,6 +226,9 @@ export default function SequenceLibrary({ onSelectSample }: SequenceLibraryProps
   const [selectedCategory, setSelectedCategory] = useState<SequenceCategory>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  
+  // Active Detail Modal Sample State (null when closed)
+  const [activeModalSample, setActiveModalSample] = useState<LibrarySample | null>(null)
 
   // Filtered samples based on tab category and search term
   const filteredSamples = useMemo(() => {
@@ -248,20 +250,22 @@ export default function SequenceLibrary({ onSelectSample }: SequenceLibraryProps
     })
   }, [selectedCategory, searchQuery])
 
-  // Copy sequence to clipboard helper
+  // Copy sequence helper
   const handleCopySequence = (e: React.MouseEvent, sample: LibrarySample) => {
     e.stopPropagation()
-    const textToCopy = sample.sequence
-    navigator.clipboard.writeText(textToCopy).then(() => {
+    navigator.clipboard.writeText(sample.sequence).then(() => {
       setCopiedId(sample.id)
       setTimeout(() => setCopiedId(null), 2000)
     })
   }
 
-  // Handle Load Action
+  // Load into Builder helper
   const handleLoad = (sample: LibrarySample) => {
     const dnaToLoad = sample.dnaEquivalent || sample.sequence
     onSelectSample(dnaToLoad, sample)
+    if (activeModalSample) {
+      setActiveModalSample(null)
+    }
   }
 
   return (
@@ -274,12 +278,12 @@ export default function SequenceLibrary({ onSelectSample }: SequenceLibraryProps
             <div>
               <h2>Pro Biological Sequence Library</h2>
               <p className="library-subtitle">
-                Explore curated DNA, RNA, and Protein reference sequences from human, viral, and model organisms.
+                Explore curated DNA, RNA, and Protein reference sequences across human, viral, and model organisms.
               </p>
             </div>
           </div>
           <div className="library-stats-pill">
-            <span className="badge-count">{SAMPLE_LIBRARY.length}</span> Curated Presets
+            <span className="badge-count">{SAMPLE_LIBRARY.length}</span> Reference Presets
           </div>
         </div>
 
@@ -330,12 +334,12 @@ export default function SequenceLibrary({ onSelectSample }: SequenceLibraryProps
         </div>
       </div>
 
-      {/* Library Grid View */}
+      {/* Clean Compact Card Grid */}
       <div className="library-grid">
         {filteredSamples.length === 0 ? (
           <div className="empty-library-state glass-card">
             <span className="empty-icon">🔎</span>
-            <h3>No sequences matched your search query</h3>
+            <h3>No sequences matched your search</h3>
             <p>Try searching for terms like "Insulin", "Sickle", "Vaccine", or "P68871"</p>
             <button
               type="button"
@@ -352,7 +356,7 @@ export default function SequenceLibrary({ onSelectSample }: SequenceLibraryProps
           filteredSamples.map((sample) => (
             <div
               key={sample.id}
-              className={`library-card glass-card category-border-${sample.category}`}
+              className={`library-card compact-library-card glass-card category-border-${sample.category}`}
             >
               {/* Top Badge Row */}
               <div className="card-top-row">
@@ -361,9 +365,7 @@ export default function SequenceLibrary({ onSelectSample }: SequenceLibraryProps
                 </span>
                 <span className="badge-subcategory">{sample.subCategory}</span>
                 {sample.accession && (
-                  <span className="badge-accession" title="UniProt / GenBank ID">
-                    {sample.accession}
-                  </span>
+                  <span className="badge-accession">{sample.accession}</span>
                 )}
               </div>
 
@@ -377,56 +379,143 @@ export default function SequenceLibrary({ onSelectSample }: SequenceLibraryProps
               </div>
 
               {/* Description */}
-              <p className="sample-description">{sample.description}</p>
+              <p className="sample-description compact-desc">{sample.description}</p>
 
-              {/* Sequence Snippet Preview Box */}
-              <div className="sequence-preview-box">
-                <div className="preview-label-row">
-                  <span className="preview-tag">
-                    {sample.category === 'protein'
-                      ? 'PROTEIN AMINO ACIDS'
-                      : sample.category === 'rna'
-                      ? 'RNA TRANSCRIPT'
-                      : 'DNA SEQUENCE'}
-                  </span>
-                  <span className="seq-len-tag">{sample.length} {sample.category === 'protein' ? 'AAs' : 'bases'}</span>
-                </div>
-                <div className="seq-mono-text font-mono">
-                  {sample.sequence}
-                </div>
+              {/* Key Specs Summary Row */}
+              <div className="compact-specs-row">
+                <span className="spec-pill">
+                  📏 {sample.length} {sample.category === 'protein' ? 'AAs' : 'bp'}
+                </span>
+                {sample.gcContent && (
+                  <span className="spec-pill">⚖️ {sample.gcContent}% GC</span>
+                )}
               </div>
 
-              {/* Functional Tags */}
-              <div className="tags-row">
-                {sample.functionTags.map((tag, idx) => (
-                  <span key={idx} className="function-tag">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-
-              {/* Action Buttons */}
+              {/* Clean Action Buttons: View Details vs Load */}
               <div className="card-actions-row">
+                <button
+                  type="button"
+                  className="btn-view-modal-trigger"
+                  onClick={() => setActiveModalSample(sample)}
+                >
+                  👁️ View Specs & Sequence
+                </button>
+
                 <button
                   type="button"
                   className="btn-card-load pulse-glow-btn"
                   onClick={() => handleLoad(sample)}
                 >
-                  ⚡ Load into Builder
-                </button>
-                <button
-                  type="button"
-                  className="btn-card-copy"
-                  onClick={(e) => handleCopySequence(e, sample)}
-                  title="Copy sequence to clipboard"
-                >
-                  {copiedId === sample.id ? '✓ Copied' : '📋 Copy'}
+                  ⚡ Load Sequence
                 </button>
               </div>
             </div>
           ))
         )}
       </div>
+
+      {/* Interactive Detail Modal Drawer */}
+      {activeModalSample && (
+        <div className="modal-backdrop animate-in" onClick={() => setActiveModalSample(null)}>
+          <div
+            className="sample-detail-modal glass-card animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <span className="modal-icon">{activeModalSample.icon}</span>
+                <div>
+                  <div className="modal-badge-row">
+                    <span className={`badge-type badge-${activeModalSample.category}`}>
+                      {activeModalSample.category.toUpperCase()}
+                    </span>
+                    <span className="badge-subcategory">{activeModalSample.subCategory}</span>
+                  </div>
+                  <h3 className="modal-name">{activeModalSample.name}</h3>
+                  <div className="modal-organism">🌿 {activeModalSample.organism}</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn-modal-close"
+                onClick={() => setActiveModalSample(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body Specs */}
+            <div className="modal-body">
+              <p className="modal-description">{activeModalSample.description}</p>
+
+              {/* Metadata Table */}
+              <div className="modal-specs-grid">
+                <div className="modal-spec-item">
+                  <span className="spec-label">LENGTH</span>
+                  <span className="spec-val">
+                    {activeModalSample.length} {activeModalSample.category === 'protein' ? 'Amino Acids' : 'Nucleotides'}
+                  </span>
+                </div>
+
+                {activeModalSample.gcContent && (
+                  <div className="modal-spec-item">
+                    <span className="spec-label">GC CONTENT</span>
+                    <span className="spec-val">{activeModalSample.gcContent}%</span>
+                  </div>
+                )}
+
+                {activeModalSample.accession && (
+                  <div className="modal-spec-item">
+                    <span className="spec-label">ACCESSION ID</span>
+                    <span className="spec-val font-mono">{activeModalSample.accession}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Full Sequence Display Box */}
+              <div className="modal-sequence-box">
+                <div className="box-header">
+                  <span>RAW FASTA SEQUENCE CONTENT</span>
+                  <button
+                    type="button"
+                    className="btn-copy-mini"
+                    onClick={(e) => handleCopySequence(e, activeModalSample)}
+                  >
+                    {copiedId === activeModalSample.id ? '✓ Copied' : '📋 Copy FASTA'}
+                  </button>
+                </div>
+                <div className="fasta-code-block font-mono">
+                  &gt;{activeModalSample.id} | {activeModalSample.name} | {activeModalSample.organism}
+                  <br />
+                  {activeModalSample.sequence}
+                </div>
+              </div>
+
+              {/* Functional Tags */}
+              <div className="tags-row">
+                {activeModalSample.functionTags.map((tag, idx) => (
+                  <span key={idx} className="function-tag">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-modal-load pulse-glow-btn"
+                onClick={() => handleLoad(activeModalSample)}
+              >
+                ⚡ Load into Sequence Builder & Analyze
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

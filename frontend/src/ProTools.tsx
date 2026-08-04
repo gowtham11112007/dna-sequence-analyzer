@@ -1,11 +1,7 @@
 /**
- * ProTools Component — Advanced Bioinformatic Sequence Tools
- * Features:
- *   1. 5'→3' Reverse Complement & Strand Operations
- *   2. 6-Frame ORF (Open Reading Frame) Finder
- *   3. Restriction Enzyme Cut Site Scanner (EcoRI, BamHI, HindIII, XhoI, etc.)
- *   4. Synthetic DNA/RNA/Protein Generator (custom length & GC%)
- *   5. Point Mutagenesis Simulator
+ * ProTools Component — Modular Bioinformatic Sequence Tools
+ * Features expandable tool sections and collapsible detail views to maintain
+ * an ultra-clean, state-of-the-art UI experience.
  */
 
 import React, { useState, useMemo } from 'react'
@@ -15,7 +11,6 @@ interface ProToolsProps {
   onLoadSequence: (seq: string) => void
 }
 
-// Restriction Enzymes Database
 interface RestrictionEnzyme {
   name: string
   site: string
@@ -34,7 +29,6 @@ const ENZYMES: RestrictionEnzyme[] = [
   { name: 'TaqI', site: 'TCGA', cutOffset: 1, description: 'T^CGA thermophilic 4-base cutter' },
 ]
 
-// Codon table for frame translation
 const CODON_TABLE: Record<string, string> = {
   ATA: 'I', ATC: 'I', ATT: 'I', ATG: 'M',
   ACA: 'T', ACC: 'T', ACG: 'T', ACT: 'T',
@@ -60,18 +54,15 @@ const DNA_COMPLEMENT: Record<string, string> = {
 
 export default function ProTools({ currentSequence, onLoadSequence }: ProToolsProps) {
   const [activeTab, setActiveTab] = useState<'revcomp' | 'orf' | 'enzymes' | 'synthetic' | 'mutagenesis'>('revcomp')
-  
-  // Custom sequence input within Pro Tools if user wants to analyze something else
   const [toolSeq, setToolSeq] = useState<string>(currentSequence || 'ATGGTGCATCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCC')
 
-  // Keep toolSeq synced if currentSequence updates
   React.useEffect(() => {
     if (currentSequence) {
       setToolSeq(currentSequence.toUpperCase().replace(/[^ATGCU]/g, ''))
     }
   }, [currentSequence])
 
-  // --- REVERSE COMPLEMENT CALCULATOR ---
+  // --- REVERSE COMPLEMENT ---
   const complementSeq = useMemo(() => {
     return toolSeq.split('').map((b) => DNA_COMPLEMENT[b] || b).join('')
   }, [toolSeq])
@@ -84,7 +75,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
     return complementSeq.split('').reverse().join('')
   }, [toolSeq, complementSeq])
 
-  // --- RESTRICTION ENZYME SCANNER ---
+  // --- RESTRICTION ENZYMES ---
   const restrictionMatches = useMemo(() => {
     const results: { enzyme: RestrictionEnzyme; positions: number[] }[] = []
     if (!toolSeq) return results
@@ -103,7 +94,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
     return results
   }, [toolSeq])
 
-  // --- ORF FINDER (6 READING FRAMES) ---
+  // --- ORF SCANNER ---
   const orfResults = useMemo(() => {
     if (toolSeq.length < 9) return []
 
@@ -111,12 +102,12 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
     const revCleanDna = cleanDna.split('').map((b) => DNA_COMPLEMENT[b] || b).reverse().join('')
 
     const frames = [
-      { name: 'Frame +1', seq: cleanDna, offset: 0, strand: '+' },
-      { name: 'Frame +2', seq: cleanDna.slice(1), offset: 1, strand: '+' },
-      { name: 'Frame +3', seq: cleanDna.slice(2), offset: 2, strand: '+' },
-      { name: 'Frame -1', seq: revCleanDna, offset: 0, strand: '-' },
-      { name: 'Frame -2', seq: revCleanDna.slice(1), offset: 1, strand: '-' },
-      { name: 'Frame -3', seq: revCleanDna.slice(2), offset: 2, strand: '-' },
+      { name: 'Frame +1', seq: cleanDna, offset: 0 },
+      { name: 'Frame +2', seq: cleanDna.slice(1), offset: 1 },
+      { name: 'Frame +3', seq: cleanDna.slice(2), offset: 2 },
+      { name: 'Frame -1', seq: revCleanDna, offset: 0 },
+      { name: 'Frame -2', seq: revCleanDna.slice(1), offset: 1 },
+      { name: 'Frame -3', seq: revCleanDna.slice(2), offset: 2 },
     ]
 
     const foundOrfs: { frame: string; start: number; stop: number; length: number; peptide: string }[] = []
@@ -157,7 +148,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
     return foundOrfs.sort((a, b) => b.length - a.length)
   }, [toolSeq])
 
-  // --- SYNTHETIC GENERATOR STATE ---
+  // --- SYNTHETIC GENERATOR ---
   const [synthType, setSynthType] = useState<'dna' | 'rna' | 'protein'>('dna')
   const [synthLength, setSynthLength] = useState<number>(60)
   const [synthGc, setSynthGc] = useState<number>(50)
@@ -167,9 +158,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
     let result = ''
     if (synthType === 'dna' || synthType === 'rna') {
       const bases = synthType === 'dna' ? ['A', 'T', 'G', 'C'] : ['A', 'U', 'G', 'C']
-      // Adjust probability based on GC% target
       const gcProb = synthGc / 100
-      const atProb = 1 - gcProb
       for (let i = 0; i < synthLength; i++) {
         if (Math.random() < gcProb) {
           result += Math.random() < 0.5 ? 'G' : 'C'
@@ -186,7 +175,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
     setGeneratedSeq(result)
   }
 
-  // --- MUTAGENESIS SIMULATOR STATE ---
+  // --- MUTAGENESIS ---
   const [mutPos, setMutPos] = useState<number>(1)
   const [mutNewBase, setMutNewBase] = useState<string>('A')
   const [simulatedSeq, setSimulatedSeq] = useState<string>('')
@@ -208,77 +197,56 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
             <div>
               <h2>Pro Bioinformatic Function Suite</h2>
               <p className="tools-subtitle">
-                Perform reverse complement, 6-frame ORF scanning, restriction enzyme mapping, synthetic generation, and point mutagenesis.
+                Select any tool below to calculate reverse complements, scan ORFs, map cut sites, or generate synthetic DNA.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Input Control Box */}
+        {/* Input Bar */}
         <div className="tools-input-box">
-          <label className="tools-label font-semibold">Active Input Sequence:</label>
+          <label className="tools-label font-semibold">Active Sequence Input:</label>
           <div className="tools-input-row">
             <input
               type="text"
               className="tools-sequence-input font-mono"
               value={toolSeq}
               onChange={(e) => setToolSeq(e.target.value.toUpperCase().replace(/[^ATGCU]/g, ''))}
-              placeholder="Paste or type sequence (A, T, G, C, U)..."
+              placeholder="Paste sequence..."
             />
             <button
               type="button"
               className="btn-use-builder-seq"
               onClick={() => onLoadSequence(toolSeq)}
             >
-              🚀 Analyze in Builder
+              🚀 Send to Builder
             </button>
-          </div>
-          <div className="tools-meta-row">
-            <span>Length: <strong>{toolSeq.length}</strong> bases</span>
           </div>
         </div>
 
-        {/* Tools Sub-Navigation Tabs */}
+        {/* Clean Interactive Tool Selector Buttons */}
         <div className="tools-tabs">
-          <button
-            type="button"
-            className={`tools-tab-btn ${activeTab === 'revcomp' ? 'active' : ''}`}
-            onClick={() => setActiveTab('revcomp')}
-          >
-            🔄 Reverse Complement
-          </button>
-          <button
-            type="button"
-            className={`tools-tab-btn ${activeTab === 'orf' ? 'active' : ''}`}
-            onClick={() => setActiveTab('orf')}
-          >
-            🔍 6-Frame ORF Finder ({orfResults.length})
-          </button>
-          <button
-            type="button"
-            className={`tools-tab-btn ${activeTab === 'enzymes' ? 'active' : ''}`}
-            onClick={() => setActiveTab('enzymes')}
-          >
-            ✂️ Restriction Cut Sites ({restrictionMatches.length})
-          </button>
-          <button
-            type="button"
-            className={`tools-tab-btn ${activeTab === 'synthetic' ? 'active' : ''}`}
-            onClick={() => setActiveTab('synthetic')}
-          >
-            🧪 Synthetic Generator
-          </button>
-          <button
-            type="button"
-            className={`tools-tab-btn ${activeTab === 'mutagenesis' ? 'active' : ''}`}
-            onClick={() => setActiveTab('mutagenesis')}
-          >
-            🧬 Mutagenesis Simulator
-          </button>
+          {[
+            { id: 'revcomp', label: '🔄 Reverse Complement', badge: null },
+            { id: 'orf', label: '🔍 6-Frame ORF Finder', badge: orfResults.length },
+            { id: 'enzymes', label: '✂️ Restriction Cut Sites', badge: restrictionMatches.length },
+            { id: 'synthetic', label: '🧪 Synthetic Generator', badge: null },
+            { id: 'mutagenesis', label: '🧬 Mutagenesis Simulator', badge: null },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`tools-tab-btn ${activeTab === t.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(t.id as any)}
+            >
+              {t.label}
+              {t.badge !== null && <span className="tab-count-pill">{t.badge}</span>}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ================= TAB 1: REVERSE COMPLEMENT ================= */}
+      {/* Tool View Panels */}
       {activeTab === 'revcomp' && (
         <div className="tool-view-panel glass-card animate-in">
           <h3 className="panel-title">🔄 Strand Operations & Reverse Complement</h3>
@@ -287,12 +255,8 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
           <div className="strand-grid">
             <div className="strand-card">
               <div className="strand-card-header">
-                <span>5' → 3' REVERSE COMPLEMENT (ANALOGOUS STRAND)</span>
-                <button
-                  type="button"
-                  className="btn-copy-mini"
-                  onClick={() => navigator.clipboard.writeText(revCompSeq)}
-                >
+                <span>5' → 3' REVERSE COMPLEMENT</span>
+                <button type="button" className="btn-copy-mini" onClick={() => navigator.clipboard.writeText(revCompSeq)}>
                   📋 Copy
                 </button>
               </div>
@@ -301,12 +265,8 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
 
             <div className="strand-card">
               <div className="strand-card-header">
-                <span>WATSON-CRICK COMPLEMENT STRAND</span>
-                <button
-                  type="button"
-                  className="btn-copy-mini"
-                  onClick={() => navigator.clipboard.writeText(complementSeq)}
-                >
+                <span>WATSON-CRICK COMPLEMENT</span>
+                <button type="button" className="btn-copy-mini" onClick={() => navigator.clipboard.writeText(complementSeq)}>
                   📋 Copy
                 </button>
               </div>
@@ -316,11 +276,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
             <div className="strand-card">
               <div className="strand-card-header">
                 <span>REVERSE STRAND</span>
-                <button
-                  type="button"
-                  className="btn-copy-mini"
-                  onClick={() => navigator.clipboard.writeText(reverseSeq)}
-                >
+                <button type="button" className="btn-copy-mini" onClick={() => navigator.clipboard.writeText(reverseSeq)}>
                   📋 Copy
                 </button>
               </div>
@@ -330,16 +286,13 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
         </div>
       )}
 
-      {/* ================= TAB 2: 6-FRAME ORF FINDER ================= */}
       {activeTab === 'orf' && (
         <div className="tool-view-panel glass-card animate-in">
           <h3 className="panel-title">🔍 6-Frame Open Reading Frame (ORF) Scanner</h3>
-          <p className="panel-desc">Searches for Start Codon (ATG) through Stop Codons (TAA, TAG, TGA) across all 6 reading frames.</p>
+          <p className="panel-desc">Detects START (ATG) to STOP codons across all 6 reading frames.</p>
 
           {orfResults.length === 0 ? (
-            <div className="empty-tool-state">
-              <span>⚠️</span> No complete ORFs (ATG start → STOP) detected in sequence. Try a longer coding region.
-            </div>
+            <div className="empty-tool-state">⚠️ No complete ORFs found. Try a longer coding region.</div>
           ) : (
             <div className="orf-list">
               {orfResults.map((orf, idx) => (
@@ -349,10 +302,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
                     <span className="orf-pos">Bases {orf.start}..{orf.stop}</span>
                     <span className="orf-len-badge">⚡ {orf.length} Amino Acids</span>
                   </div>
-                  <div className="orf-peptide-box font-mono">
-                    <span className="peptide-label">TRANSLATED PEPTIDE:</span>
-                    {orf.peptide}
-                  </div>
+                  <div className="orf-peptide-box font-mono">{orf.peptide}</div>
                 </div>
               ))}
             </div>
@@ -360,11 +310,10 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
         </div>
       )}
 
-      {/* ================= TAB 3: RESTRICTION ENZYMES ================= */}
       {activeTab === 'enzymes' && (
         <div className="tool-view-panel glass-card animate-in">
-          <h3 className="panel-title">✂️ Restriction Endonuclease Cut Site Mapper</h3>
-          <p className="panel-desc">Maps recognition sites for standard cloning restriction enzymes.</p>
+          <h3 className="panel-title">✂️ Restriction Endonuclease Cut Sites</h3>
+          <p className="panel-desc">Maps recognition sites for standard restriction enzymes.</p>
 
           <div className="enzyme-results-grid">
             {ENZYMES.map((enz) => {
@@ -381,9 +330,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
                   <div className="enz-site font-mono">Site: <strong>{enz.site}</strong></div>
                   <div className="enz-desc">{enz.description}</div>
                   {hasMatch && (
-                    <div className="enz-pos-list">
-                      Positions: {match.positions.join(', ')} bp
-                    </div>
+                    <div className="enz-pos-list">Positions: {match.positions.join(', ')} bp</div>
                   )}
                 </div>
               )
@@ -392,11 +339,10 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
         </div>
       )}
 
-      {/* ================= TAB 4: SYNTHETIC GENERATOR ================= */}
       {activeTab === 'synthetic' && (
         <div className="tool-view-panel glass-card animate-in">
           <h3 className="panel-title">🧪 Synthetic Sequence Generator</h3>
-          <p className="panel-desc">Generate synthetic DNA, RNA, or Protein sequences with target GC content and custom length.</p>
+          <p className="panel-desc">Generate synthetic DNA, RNA, or Protein with custom length & GC target.</p>
 
           <div className="synth-controls">
             <div className="synth-field">
@@ -409,26 +355,14 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
             </div>
 
             <div className="synth-field">
-              <label>Length (Bases / Residues): {synthLength}</label>
-              <input
-                type="range"
-                min={15}
-                max={300}
-                value={synthLength}
-                onChange={(e) => setSynthLength(Number(e.target.value))}
-              />
+              <label>Length: {synthLength} units</label>
+              <input type="range" min={15} max={300} value={synthLength} onChange={(e) => setSynthLength(Number(e.target.value))} />
             </div>
 
             {synthType !== 'protein' && (
               <div className="synth-field">
                 <label>Target GC Content: {synthGc}%</label>
-                <input
-                  type="range"
-                  min={10}
-                  max={90}
-                  value={synthGc}
-                  onChange={(e) => setSynthGc(Number(e.target.value))}
-                />
+                <input type="range" min={10} max={90} value={synthGc} onChange={(e) => setSynthGc(Number(e.target.value))} />
               </div>
             )}
 
@@ -440,7 +374,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
           {generatedSeq && (
             <div className="generated-output-box glass-card animate-in">
               <div className="gen-header">
-                <span>GENERATED SYNTHETIC SEQUENCE ({generatedSeq.length} units)</span>
+                <span>GENERATED SEQUENCE ({generatedSeq.length} units)</span>
                 <div className="gen-actions">
                   <button type="button" className="btn-copy-mini" onClick={() => navigator.clipboard.writeText(generatedSeq)}>
                     📋 Copy
@@ -458,22 +392,15 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
         </div>
       )}
 
-      {/* ================= TAB 5: MUTAGENESIS SIMULATOR ================= */}
       {activeTab === 'mutagenesis' && (
         <div className="tool-view-panel glass-card animate-in">
-          <h3 className="panel-title">🧬 Single Point Mutagenesis Simulator</h3>
-          <p className="panel-desc">Introduce single nucleotide substitutions to test live mutational impact.</p>
+          <h3 className="panel-title">🧬 Point Mutagenesis Simulator</h3>
+          <p className="panel-desc">Mutate a single base position to test mutational impact.</p>
 
           <div className="mut-controls">
             <div className="mut-field">
-              <label>Position to Mutate (1 to {toolSeq.length}):</label>
-              <input
-                type="number"
-                min={1}
-                max={Math.max(1, toolSeq.length)}
-                value={mutPos}
-                onChange={(e) => setMutPos(Number(e.target.value))}
-              />
+              <label>Base Position (1 to {toolSeq.length}):</label>
+              <input type="number" min={1} max={Math.max(1, toolSeq.length)} value={mutPos} onChange={(e) => setMutPos(Number(e.target.value))} />
             </div>
 
             <div className="mut-field">
@@ -496,7 +423,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
               <div className="sim-header">
                 <span>MUTATED SEQUENCE OUTPUT</span>
                 <button type="button" className="btn-load-sim" onClick={() => onLoadSequence(simulatedSeq)}>
-                  🚀 Load Mutated DNA into Builder
+                  🚀 Send to Builder
                 </button>
               </div>
               <div className="sim-seq font-mono">{simulatedSeq}</div>

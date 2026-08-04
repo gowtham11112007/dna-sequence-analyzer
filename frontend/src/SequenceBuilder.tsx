@@ -1,15 +1,14 @@
 /**
- * SequenceBuilder — interactive button-based DNA sequence builder.
+ * SequenceBuilder — modular button-triggered DNA sequence builder.
  * Features:
- *   • Search & Paste Input Toolbar (Clipboard access, FASTA format auto-parsing)
- *   • Base sanitizer (removes spaces/numbers, converts RNA U→T)
- *   • Live Motif Search within active sequence
- *   • Four large A/T/G/C buttons with click burst animations
- *   • Live mRNA transcription preview ribbon
- *   • Undo, Clear, and running base counter
+ *   • Clean Hero Builder with interactive A/T/G/C buttons
+ *   • Button-triggered drawers: Paste Clipboard, FASTA Parser, Motif Search, Biophysics Analytics
+ *   • Animated base badges and click burst effects
+ *   • Live mRNA preview ribbon
  */
 
 import React, { useState, useCallback, useMemo } from 'react'
+import SequenceAnalytics from './SequenceAnalytics'
 
 interface SequenceBuilderProps {
   sequence: string
@@ -44,14 +43,17 @@ export default function SequenceBuilder({
   label = 'Sample DNA Sequence',
 }: SequenceBuilderProps) {
   const [bursts, setBursts] = useState<BurstEffect[]>([])
-  
-  // Search & Paste State
-  const [pasteInput, setPasteInput] = useState('')
+
+  // Collapsible Button-Triggered Drawers
   const [showFastaDrawer, setShowFastaDrawer] = useState(false)
+  const [showMotifSearch, setShowMotifSearch] = useState(false)
+  const [showBiophysics, setShowBiophysics] = useState(false)
+
+  const [pasteInput, setPasteInput] = useState('')
   const [motifSearch, setMotifSearch] = useState('')
   const [pasteNotification, setPasteNotification] = useState<string | null>(null)
 
-  // Append a single base with click burst animation
+  // Append base
   const addBase = useCallback(
     (base: string, e: React.MouseEvent<HTMLButtonElement>) => {
       const rect = e.currentTarget.getBoundingClientRect()
@@ -70,28 +72,20 @@ export default function SequenceBuilder({
     [sequence, onSequenceChange]
   )
 
-  // Clean raw paste text (Strips FASTA headers, converts RNA U->T, removes non-ATGC)
-  const cleanSequenceText = (raw: string): { clean: string; originalLen: number; isFasta: boolean } => {
+  // Clean raw paste text
+  const cleanSequenceText = (raw: string): { clean: string; isFasta: boolean } => {
     const lines = raw.split('\n')
     const isFasta = lines.some((l) => l.startsWith('>'))
-
-    // Filter out header lines starting with >
     const seqLines = lines.filter((l) => !l.startsWith('>')).join('')
-    
-    // Replace U with T for RNA input compatibility, remove whitespace, numbers, non-ATGC
-    const clean = seqLines
-      .toUpperCase()
-      .replace(/U/g, 'T')
-      .replace(/[^ATGC]/g, '')
-
-    return { clean, originalLen: raw.length, isFasta }
+    const clean = seqLines.toUpperCase().replace(/U/g, 'T').replace(/[^ATGC]/g, '')
+    return { clean, isFasta }
   }
 
-  // Handle direct clipboard paste using Clipboard API
+  // Paste from Clipboard
   const handlePasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText()
-      if (!text || text.trim() === '') {
+      if (!text || !text.trim()) {
         setPasteNotification('⚠️ Clipboard is empty or contains no text.')
         setTimeout(() => setPasteNotification(null), 3000)
         return
@@ -105,20 +99,19 @@ export default function SequenceBuilder({
       }
 
       onSequenceChange(clean)
-      setPasteNotification(`✅ Successfully loaded ${clean.length} bases ${isFasta ? '(Parsed FASTA header)' : ''}`)
+      setPasteNotification(`✅ Successfully loaded ${clean.length} bases ${isFasta ? '(Parsed FASTA)' : ''}`)
       setTimeout(() => setPasteNotification(null), 3500)
-    } catch (err) {
-      // Fallback: open manual paste drawer if browser denies clipboard API access
+    } catch {
       setShowFastaDrawer(true)
     }
   }
 
-  // Handle manual paste box submit
+  // Apply manual paste
   const handleApplyPasteText = (append = false) => {
     if (!pasteInput.trim()) return
     const { clean, isFasta } = cleanSequenceText(pasteInput)
     if (clean.length === 0) {
-      setPasteNotification('⚠️ No valid DNA/RNA bases found in text.')
+      setPasteNotification('⚠️ No valid DNA/RNA bases found.')
       setTimeout(() => setPasteNotification(null), 3000)
       return
     }
@@ -128,7 +121,7 @@ export default function SequenceBuilder({
       setPasteNotification(`✅ Appended ${clean.length} bases`)
     } else {
       onSequenceChange(clean)
-      setPasteNotification(`✅ Replaced sequence with ${clean.length} bases ${isFasta ? '(Parsed FASTA header)' : ''}`)
+      setPasteNotification(`✅ Replaced sequence with ${clean.length} bases ${isFasta ? '(Parsed FASTA)' : ''}`)
     }
 
     setPasteInput('')
@@ -136,24 +129,22 @@ export default function SequenceBuilder({
     setTimeout(() => setPasteNotification(null), 3500)
   }
 
-  // Remove last base
   const undoLast = useCallback(() => {
     onSequenceChange(sequence.slice(0, -1))
   }, [sequence, onSequenceChange])
 
-  // Clear entire sequence
   const clearAll = useCallback(() => {
     onSequenceChange('')
     setMotifSearch('')
   }, [onSequenceChange])
 
-  // Compute live mRNA sequence
+  // Live mRNA sequence
   const mrnaLive = sequence
     .split('')
     .map((b) => MRNA_MAP[b] || b)
     .join('')
 
-  // Group DNA sequence into codon triplets for visualization
+  // Codon groups
   const dnaCodonGroups: string[] = []
   for (let i = 0; i < sequence.length; i += 3) {
     dnaCodonGroups.push(sequence.slice(i, i + 3))
@@ -178,31 +169,51 @@ export default function SequenceBuilder({
 
   return (
     <div className="sequence-builder-wrapper">
-      {/* Header & Quick Action Row */}
+      {/* Header Label */}
       <div className="builder-top-header">
         <div className="card-title">
           <span className="icon-pulse">🧬</span>
           {label}
         </div>
 
-        {/* Quick Toolbar: Clipboard Paste & FASTA Drawer Toggle */}
-        <div className="paste-toolbar-actions">
+        {/* Clean Interactive Action Buttons Bar */}
+        <div className="builder-action-pills">
           <button
             type="button"
-            className="btn-paste-clipboard pulse-glow-btn"
+            className="action-pill-btn pill-clipboard"
             onClick={handlePasteFromClipboard}
-            title="Paste sequence text from system clipboard"
+            title="Paste sequence from system clipboard"
           >
-            📋 Paste from Clipboard
+            📋 Paste Clipboard
           </button>
 
           <button
             type="button"
-            className="btn-toggle-fasta"
+            className={`action-pill-btn ${showFastaDrawer ? 'active' : ''}`}
             onClick={() => setShowFastaDrawer(!showFastaDrawer)}
           >
-            {showFastaDrawer ? '✕ Close Paste Drawer' : '📝 Paste Text / FASTA'}
+            📝 {showFastaDrawer ? 'Close FASTA' : 'FASTA / Text'}
           </button>
+
+          {sequence.length > 0 && (
+            <>
+              <button
+                type="button"
+                className={`action-pill-btn ${showMotifSearch ? 'active' : ''}`}
+                onClick={() => setShowMotifSearch(!showMotifSearch)}
+              >
+                🔍 {showMotifSearch ? 'Close Search' : 'Motif Search'}
+              </button>
+
+              <button
+                type="button"
+                className={`action-pill-btn ${showBiophysics ? 'active' : ''}`}
+                onClick={() => setShowBiophysics(!showBiophysics)}
+              >
+                📊 {showBiophysics ? 'Hide Biophysics' : 'Show Biophysics'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -213,18 +224,18 @@ export default function SequenceBuilder({
         </div>
       )}
 
-      {/* FASTA & Raw Text Paste Drawer */}
+      {/* Collapsible FASTA & Text Paste Drawer */}
       {showFastaDrawer && (
         <div className="fasta-drawer-panel glass-card animate-in">
           <div className="drawer-header">
             <span className="drawer-title">📝 Raw Sequence & FASTA Parser</span>
-            <span className="drawer-sub">Paste FASTA formatted text (e.g. `&gt;header...`) or raw DNA/RNA code</span>
+            <span className="drawer-sub">Paste FASTA format (`&gt;header...`) or raw DNA/RNA code</span>
           </div>
 
           <textarea
             className="fasta-textarea font-mono"
-            rows={4}
-            placeholder="Paste sequence here (e.g., >sp|P68871|HBB ATGGTGCATCTGACTCCT...)"
+            rows={3}
+            placeholder="Paste sequence here (e.g. >sp|P68871|HBB ATGGTGCATCTGACTCCT...)"
             value={pasteInput}
             onChange={(e) => setPasteInput(e.target.value)}
           />
@@ -236,7 +247,7 @@ export default function SequenceBuilder({
               onClick={() => handleApplyPasteText(false)}
               disabled={!pasteInput.trim()}
             >
-              🔄 Replace Current Sequence
+              🔄 Replace Sequence
             </button>
             <button
               type="button"
@@ -244,7 +255,7 @@ export default function SequenceBuilder({
               onClick={() => handleApplyPasteText(true)}
               disabled={!pasteInput.trim()}
             >
-              ➕ Append to Sequence
+              ➕ Append Sequence
             </button>
             <button
               type="button"
@@ -252,43 +263,52 @@ export default function SequenceBuilder({
               onClick={() => setPasteInput('')}
               disabled={!pasteInput.trim()}
             >
-              Clear Text
+              Clear
             </button>
           </div>
         </div>
       )}
 
-      {/* Sequence Strip — live display with animated pop badges */}
+      {/* Collapsible Motif Search Bar */}
+      {showMotifSearch && sequence.length > 0 && (
+        <div className="motif-search-drawer glass-card animate-in">
+          <span className="motif-icon">🔍</span>
+          <input
+            type="text"
+            className="motif-input font-mono"
+            placeholder="Type motif sequence to highlight (e.g. ATG, GAATTC)..."
+            value={motifSearch}
+            onChange={(e) => setMotifSearch(e.target.value.toUpperCase())}
+          />
+          {motifSearch && (
+            <span className="motif-count">
+              {motifMatchIndices.size > 0 ? `${motifMatchIndices.size} base(s) highlighted` : 'No match'}
+            </span>
+          )}
+          <button
+            type="button"
+            className="btn-close-mini"
+            onClick={() => {
+              setMotifSearch('')
+              setShowMotifSearch(false)
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Main Sequence Strip Display */}
       <div className="sequence-strip-container">
         <div className="strip-header-row">
           <span className="strip-tag">DNA STRAND (5' → 3')</span>
-
-          {/* Sequence Motif Search Input */}
-          {sequence.length > 0 && (
-            <div className="motif-search-box">
-              <span className="motif-icon">🔍</span>
-              <input
-                type="text"
-                className="motif-input font-mono"
-                placeholder="Find motif (e.g. ATG, GAATTC)..."
-                value={motifSearch}
-                onChange={(e) => setMotifSearch(e.target.value.toUpperCase())}
-              />
-              {motifSearch && (
-                <span className="motif-count">
-                  {motifMatchIndices.size > 0 ? `${motifMatchIndices.size} base(s)` : 'No match'}
-                </span>
-              )}
-            </div>
-          )}
-
           <span className="count-badge">{sequence.length} bases</span>
         </div>
 
         <div className="sequence-strip" aria-label="DNA sequence display">
           {sequence.length === 0 ? (
             <span className="sequence-strip-empty">
-              Tap the base buttons below or click <strong>"Paste from Clipboard"</strong> to add sequence…
+              Tap base buttons below or click <strong>"📋 Paste Clipboard"</strong> to build sequence…
             </span>
           ) : (
             <div className="codon-groups-container">
@@ -347,7 +367,7 @@ export default function SequenceBuilder({
         </div>
       </div>
 
-      {/* Base builder buttons with interactive click ripples */}
+      {/* Interactive Base Builder Buttons */}
       <div className="base-buttons">
         {(['A', 'T', 'G', 'C'] as const).map((base) => (
           <button
@@ -361,7 +381,6 @@ export default function SequenceBuilder({
             <span className="base-letter">{base}</span>
             <span className="base-label">{BASE_LABELS[base]}</span>
 
-            {/* Click ripple bursts */}
             {bursts
               .filter((b) => b.base === base)
               .map((b) => (
@@ -394,6 +413,13 @@ export default function SequenceBuilder({
           ✕ Clear All
         </button>
       </div>
+
+      {/* Collapsible Biophysics Panel (Rendered only when user toggles 'Show Biophysics' button) */}
+      {showBiophysics && sequence.length > 0 && (
+        <div className="biophysics-drawer-wrapper animate-in">
+          <SequenceAnalytics sequence={sequence} />
+        </div>
+      )}
     </div>
   )
 }

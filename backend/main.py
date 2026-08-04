@@ -114,21 +114,23 @@ def transcribe_dna(dna: str) -> str:
 def translate_mrna(mrna: str) -> tuple[str, list[str]]:
     start_idx = mrna.find("AUG")
     if start_idx == -1:
-        raise ValueError("No start codon (AUG) found in mRNA sequence")
+        # Fallback to frame 0 if no AUG start codon is present, allowing fragment analysis
+        start_idx = 0
 
     coding_mrna = mrna[start_idx:]
     codons = [coding_mrna[i:i+3] for i in range(0, len(coding_mrna), 3) if i+3 <= len(coding_mrna)]
 
     if not codons:
-        raise ValueError("mRNA sequence too short for translation after start codon")
+        raise ValueError("mRNA sequence too short for translation (minimum 3 bases required)")
 
     coding_seq = Seq(coding_mrna)
     protein = str(coding_seq.translate(to_stop=True))
 
     if not protein:
-        raise ValueError("Translation produced empty protein (stop codon immediately after start?)")
+        # Fallback to translating without stopping at initial stop codon
+        protein = str(coding_seq.translate())
 
-    used_codons = codons[:len(protein)]
+    used_codons = codons[:len(protein)] if protein else codons
     return protein, used_codons
 
 

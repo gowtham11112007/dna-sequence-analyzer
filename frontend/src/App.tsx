@@ -14,12 +14,13 @@ import CodonWheel from './CodonWheel'
 import FastaExporter from './FastaExporter'
 import SequenceLibrary from './SequenceLibrary'
 import ProTools from './ProTools'
+import Diagrams from './Diagrams'
 import { analyzeDNA } from './api'
 import type { AnalyzeResult } from './api'
 import Dock from './Dock'
 import type { DockItemData } from './Dock'
 
-export type ScreenType = 'builder' | 'library' | 'protools' | 'results' | 'codons'
+export type ScreenType = 'builder' | 'library' | 'protools' | 'results' | 'codons' | 'diagrams'
 
 export default function App() {
   // --- State ---
@@ -110,6 +111,12 @@ export default function App() {
           >
             📖 Codon Matrix
           </button>
+          <button 
+            className={`menu-btn ${currentScreen === 'diagrams' ? 'active' : ''}`}
+            onClick={() => setCurrentScreen('diagrams')}
+          >
+            🖼️ Diagrams
+          </button>
         </div>
       </div>
 
@@ -122,7 +129,8 @@ export default function App() {
             currentScreen === 'builder' ? 'Sequence Builder' :
             currentScreen === 'library' ? 'Sample Library' :
             currentScreen === 'results' ? 'Analysis Results' :
-            currentScreen === 'protools' ? 'Pro Tool Suite' : 'Codon Matrix'
+            currentScreen === 'protools' ? 'Pro Tool Suite' :
+            currentScreen === 'codons' ? 'Codon Matrix' : 'Biological Diagrams'
           }</h1>
         </div>
       </header>
@@ -140,9 +148,6 @@ export default function App() {
               label="DNA Sequence Builder"
             />
           </div>
-
-          {/* Live Biophysical Analytics (GC Content, Tm, Molecular Weight) */}
-          <SequenceAnalytics sequence={sampleSeq} />
 
           {/* Submit button -> Navigates to Results View */}
           <button
@@ -212,6 +217,15 @@ export default function App() {
       {currentScreen === 'codons' && (
         <div className="screen-view codons-screen animate-in">
           <CodonWheel activeSequence={sampleSeq} />
+        </div>
+      )}
+
+      {/* =========================================================
+          SCREEN 6: BIOLOGICAL DIAGRAMS (Extra Feature)
+         ========================================================= */}
+      {currentScreen === 'diagrams' && (
+        <div className="screen-view diagrams-screen animate-in">
+          <Diagrams />
         </div>
       )}
 

@@ -174,6 +174,38 @@ export default function CodonWheel({ activeSequence = '' }: CodonWheelProps) {
           </div>
         </div>
       )}
+
+      {/* CODON USAGE FREQUENCY CHART */}
+      {activeSequence.length >= 3 && (
+        <div className="codon-frequency-chart glass-card animate-in" style={{ marginTop: 24, padding: 20 }}>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: 16 }}>📊 Codon Usage Frequency</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(() => {
+              const totalCodons = Math.floor(activeSequence.length / 3)
+              const data = Array.from(userCodons).map(codon => {
+                let count = 0
+                for (let i = 0; i < activeSequence.length - 2; i += 3) {
+                  if (activeSequence.slice(i, i + 3).toUpperCase() === codon) count++
+                }
+                const percentage = ((count / totalCodons) * 100).toFixed(1)
+                return { codon, count, percentage }
+              }).sort((a, b) => b.count - a.count)
+
+              return data.map(({ codon, count, percentage }) => (
+                <div key={codon} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span className="font-mono" style={{ width: 40, fontWeight: 'bold' }}>{codon}</span>
+                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 4, height: 12, overflow: 'hidden' }}>
+                    <div style={{ width: `${percentage}%`, background: '#38bdf8', height: '100%', borderRadius: 4 }} />
+                  </div>
+                  <span style={{ width: 80, fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'right' }}>
+                    {count} ({percentage}%)
+                  </span>
+                </div>
+              ))
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

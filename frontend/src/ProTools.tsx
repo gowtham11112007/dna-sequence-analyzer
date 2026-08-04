@@ -53,7 +53,7 @@ const DNA_COMPLEMENT: Record<string, string> = {
 }
 
 export default function ProTools({ currentSequence, onLoadSequence }: ProToolsProps) {
-  const [activeTab, setActiveTab] = useState<'revcomp' | 'orf' | 'enzymes' | 'synthetic' | 'mutagenesis' | 'alignment' | 'primer' | 'translation' | 'gcskew' | 'kmer'>('revcomp')
+  const [activeTab, setActiveTab] = useState<'revcomp' | 'orf' | 'enzymes' | 'synthetic' | 'mutagenesis' | 'alignment' | 'primer' | 'translation' | 'gcskew' | 'kmer' | 'mutation' | 'palindrome'>('revcomp')
   const [toolSeq, setToolSeq] = useState<string>(currentSequence || 'ATGGTGCATCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCC')
 
   React.useEffect(() => {
@@ -255,7 +255,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
     return peptide
   }, [toolSeq, transFrame])
 
-  // --- GC SKEW & MELTING CALCULATOR ---
+  // --- GC SKEW & MELTING CALCULATOR (WITH SLIDING WINDOW) ---
   const gcSkewStats = useMemo(() => {
     if (!toolSeq) return null
     let gCount = 0
@@ -268,14 +268,79 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
     const gcSkew = totalGC === 0 ? 0 : (gCount - cCount) / totalGC
     const gcPerc = ((totalGC / toolSeq.length) * 100).toFixed(1)
     
+    // Calculate sliding window (window size 10)
+    const windowSize = Math.min(10, toolSeq.length)
+    const windows = []
+    for (let i = 0; i <= toolSeq.length - windowSize; i += 1) {
+      const windowStr = toolSeq.slice(i, i + windowSize)
+      let wG = 0, wC = 0
+      for (const b of windowStr) {
+        if (b === 'G') wG++
+        if (b === 'C') wC++
+      }
+      const wTotal = wG + wC
+      windows.push({
+        position: i,
+        skew: wTotal === 0 ? 0 : (wG - wC) / wTotal,
+        gcPerc: wTotal / windowSize * 100
+      })
+    }
+    
     return {
       gCount,
       cCount,
       totalGC,
       gcSkew: gcSkew.toFixed(3),
       gcPerc,
+      windows
     }
   }, [toolSeq])
+
+  // --- PALINDROME DETECTOR ---
+  const palindromes = useMemo(() => {
+    if (!toolSeq || toolSeq.length < 4) return []
+    const results = []
+    const minLen = 4
+    const maxLen = 12
+    for (let i = 0; i < toolSeq.length - minLen + 1; i++) {
+      for (let len = minLen; len <= maxLen && i + len <= toolSeq.length; len++) {
+        const sub = toolSeq.slice(i, i + len)
+        const revComp = sub.split('').map(b => DNA_COMPLEMENT[b] || b).reverse().join('')
+        if (sub === revComp) {
+          results.push({ start: i, length: len, seq: sub })
+        }
+      }
+    }
+    // Filter overlaps to only keep the longest ones at a given center
+    const filtered = []
+    for (const p of results) {
+      const isSub = results.some(r => r !== p && r.start <= p.start && r.start + r.length >= p.start + p.length && r.length > p.length)
+      if (!isSub) filtered.push(p)
+    }
+    return filtered
+  }, [toolSeq])
+
+  // --- MUTATION / SNP DETECTOR ---
+  const [refSeq, setRefSeq] = useState<string>('')
+  const [mutResult, setMutResult] = useState<any>(null)
+  const [mutLoading, setMutLoading] = useState(false)
+  const handleRunMutation = async () => {
+    if (!refSeq || !toolSeq) return
+    setMutLoading(true)
+    try {
+      const res = await fetch('https://dna-sequence-analyzer-orcin.vercel.app/api/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference_dna: refSeq, sample_dna: toolSeq })
+      })
+      const data = await res.json()
+      setMutResult(data)
+    } catch(err) {
+      setMutResult({ error: "Failed to run mutation analysis" })
+    } finally {
+      setMutLoading(false)
+    }
+  }
 
   // --- K-MER FREQUENCY COUNTER ---
   const [kmerSize, setKmerSize] = useState<number>(3)
@@ -685,6 +750,29 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
               <div className="enz-desc" style={{ fontSize: '0.75rem', marginTop: 4 }}>G and C raw counts</div>
             </div>
           </div>
+
+          <div style={{ marginTop: 24 }}>
+            <h4 style={{ color: 'var(--text-muted)', fontSize: '0.8rem', letterSpacing: 1.5, marginBottom: 12 }}>GC SKEW SLIDING WINDOW (n=10)</h4>
+            <div className="sliding-window-container" style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 10 }}>
+              {gcSkewStats.windows.map((w: any, idx: number) => (
+                <div key={idx} style={{ 
+                  flexShrink: 0, 
+                  width: 30, 
+                  height: 60, 
+                  background: w.skew > 0 ? `rgba(52, 211, 153, ${Math.abs(w.skew) + 0.2})` : w.skew < 0 ? `rgba(248, 113, 113, ${Math.abs(w.skew) + 0.2})` : 'rgba(255,255,255,0.1)',
+                  borderRadius: 4,
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  justifyContent: 'center',
+                  fontSize: '0.6rem',
+                  color: 'white',
+                  paddingBottom: 4
+                }}>
+                  {w.skew.toFixed(1)}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -712,6 +800,63 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
               <div className="empty-tool-state">Sequence is too short for this K-mer size.</div>
             )}
           </div>
+        </div>
+      )}
+      {activeTab === 'palindrome' && (
+        <div className="tool-view-panel glass-card animate-in">
+          <h3 className="panel-title">🔄 Palindrome Sequence Detector</h3>
+          <p className="panel-desc">Detects reverse-complement palindromes within the sequence, commonly found in restriction enzyme cut sites.</p>
+
+          <div className="enzyme-results-grid" style={{ marginTop: 20 }}>
+            {palindromes.length > 0 ? palindromes.map((p, idx) => (
+              <div key={idx} className="enzyme-card">
+                <div className="enz-header">
+                  <span className="enz-name font-mono">{p.seq}</span>
+                  <span className="enz-cut-badge badge-cut">{p.length} bp</span>
+                </div>
+                <div className="enz-desc">Starts at pos: {p.start + 1}</div>
+              </div>
+            )) : (
+              <div className="empty-tool-state">No palindromes found (min 4bp).</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'mutation' && (
+        <div className="tool-view-panel glass-card animate-in">
+          <h3 className="panel-title">🧬 Mutation / SNP Detector</h3>
+          <p className="panel-desc">Compare the active sequence against a reference sequence to detect SNPs, Insertions, Deletions, and Amino Acid effects (Silent, Missense, Nonsense).</p>
+
+          <div className="mut-controls" style={{ marginTop: 16 }}>
+            <div className="mut-field">
+              <label>Reference Sequence:</label>
+              <input type="text" className="tools-sequence-input font-mono" value={refSeq} onChange={e => setRefSeq(e.target.value.toUpperCase().replace(/[^ATGC]/g, ''))} placeholder="Paste Reference DNA..." />
+            </div>
+            <button className="btn-submit" style={{ marginTop: 16, padding: '10px 20px' }} onClick={handleRunMutation} disabled={!refSeq || !toolSeq || mutLoading}>
+              {mutLoading ? 'Running...' : 'Run SNP Analysis'}
+            </button>
+          </div>
+
+          {mutResult && !mutResult.error && (
+            <div style={{ marginTop: 24 }}>
+              <div className="sim-header">DETECTED MUTATIONS ({mutResult.mutation_count})</div>
+              {mutResult.mutations?.length > 0 ? (
+                <div className="enzyme-results-grid">
+                  {mutResult.mutations.map((mut: any, idx: number) => (
+                    <div key={idx} className="enzyme-card">
+                      <div className="enz-header">
+                        <span className="enz-name" style={{ color: mut.type === 'Substitution' ? '#fbbf24' : '#f87171' }}>{mut.type} @ {mut.position}</span>
+                      </div>
+                      <div className="enz-desc" style={{ marginTop: 8 }}>{mut.effect}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-tool-state" style={{ marginTop: 12 }}>No mutations detected. 100% match.</div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

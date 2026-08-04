@@ -199,7 +199,7 @@ async def fetch_uniprot_data(accession: str) -> Optional[dict]:
             if comment.get("commentType") == "FUNCTION":
                 texts = comment.get("texts", [])
                 if texts:
-                    function_desc = texts[0].get("value", function_desc)
+                    function_desc = " ".join([t.get("value", "") for t in texts]).strip()
                 break
 
         organism = data.get("organism", {}).get("scientificName", "Unknown organism")

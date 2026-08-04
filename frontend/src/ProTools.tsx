@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useMemo } from 'react'
+import { compareDNA, type CompareResult } from './api'
 
 interface ProToolsProps {
   currentSequence: string
@@ -37,7 +38,7 @@ const CODON_TABLE: Record<string, string> = {
   CTA: 'L', CTC: 'L', CTG: 'L', CTT: 'L',
   CCA: 'P', CCC: 'P', CCG: 'P', CCT: 'P',
   CAC: 'H', CAT: 'H', CAA: 'Q', CAG: 'Q',
-  CGA: 'R', CGC: 'R', CGD: 'R', CGG: 'R', CGT: 'R',
+  CGA: 'R', CGC: 'R', CGG: 'R', CGT: 'R',
   GTA: 'V', GTC: 'V', GTG: 'V', GTT: 'V',
   GCA: 'A', GCC: 'A', GCG: 'A', GCT: 'A',
   GAC: 'D', GAT: 'D', GAA: 'E', GAG: 'E',
@@ -52,13 +53,96 @@ const DNA_COMPLEMENT: Record<string, string> = {
   A: 'T', T: 'A', G: 'C', C: 'G', U: 'A',
 }
 
+/** Normalize pasted sequence to uppercase DNA (A/T/G/C), converting RNA U→T. */
+function normalizeDnaInput(raw: string): string {
+  return raw.toUpperCase().replace(/U/g, 'T').replace(/[^ATGC]/g, '')
+}
+
+interface PairwiseAlignment {
+  seq1: string
+  seq2: string
+  matchLine: string
+  identity: string
+  matches: number
+  alignedLength: number
+}
+
+/** Simple global pairwise alignment (Needleman–Wunsch) for educational comparison. */
+function globalPairwiseAlign(a: string, b: string): PairwiseAlignment {
+  const matchScore = 2
+  const mismatchScore = -1
+  const gapScore = -2
+  const n = a.length
+  const m = b.length
+
+  const dp: number[][] = Array.from({ length: n + 1 }, () => Array(m + 1).fill(0))
+  const trace: ('D' | 'U' | 'L')[][] = Array.from({ length: n + 1 }, () => Array(m + 1).fill('D' as 'D'))
+
+  for (let i = 1; i <= n; i++) trace[i][0] = 'U'
+  for (let j = 1; j <= m; j++) trace[0][j] = 'L'
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      const diag = dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? matchScore : mismatchScore)
+      const up = dp[i - 1][j] + gapScore
+      const left = dp[i][j - 1] + gapScore
+      const best = Math.max(diag, up, left)
+      dp[i][j] = best
+      if (best === diag) trace[i][j] = 'D'
+      else if (best === up) trace[i][j] = 'U'
+      else trace[i][j] = 'L'
+    }
+  }
+
+  let i = n
+  let j = m
+  const aln1: string[] = []
+  const aln2: string[] = []
+
+  while (i > 0 || j > 0) {
+    const dir = trace[i][j]
+    if (dir === 'D') {
+      aln1.push(a[i - 1])
+      aln2.push(b[j - 1])
+      i -= 1
+      j -= 1
+    } else if (dir === 'U') {
+      aln1.push(a[i - 1])
+      aln2.push('-')
+      i -= 1
+    } else {
+      aln1.push('-')
+      aln2.push(b[j - 1])
+      j -= 1
+    }
+  }
+
+  const seq1 = aln1.reverse().join('')
+  const seq2 = aln2.reverse().join('')
+  let matches = 0
+  let matchLine = ''
+  for (let k = 0; k < seq1.length; k++) {
+    if (seq1[k] !== '-' && seq1[k] === seq2[k]) {
+      matches += 1
+      matchLine += '|'
+    } else {
+      matchLine += ' '
+    }
+  }
+
+  const alignedLength = seq1.length
+  const identity = alignedLength === 0 ? '0.0' : ((matches / alignedLength) * 100).toFixed(1)
+
+  return { seq1, seq2, matchLine, identity, matches, alignedLength }
+}
+
 export default function ProTools({ currentSequence, onLoadSequence }: ProToolsProps) {
   const [activeTab, setActiveTab] = useState<'revcomp' | 'orf' | 'enzymes' | 'synthetic' | 'mutagenesis' | 'alignment' | 'primer' | 'translation' | 'gcskew' | 'kmer' | 'mutation' | 'palindrome'>('revcomp')
   const [toolSeq, setToolSeq] = useState<string>(currentSequence || 'ATGGTGCATCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCC')
 
   React.useEffect(() => {
     if (currentSequence) {
-      setToolSeq(currentSequence.toUpperCase().replace(/[^ATGCU]/g, ''))
+      setToolSeq(currentSequence.toUpperCase().replace(/U/g, 'T').replace(/[^ATGC]/g, ''))
     }
   }, [currentSequence])
 
@@ -328,7 +412,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
     if (!refSeq || !toolSeq) return
     setMutLoading(true)
     try {
-      const res = await fetch('https://dna-sequence-analyzer-orcin.vercel.app/api/compare', {
+      const res = await fetch('/compare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reference_dna: refSeq, sample_dna: toolSeq })
@@ -380,7 +464,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
               type="text"
               className="tools-sequence-input font-mono"
               value={toolSeq}
-              onChange={(e) => setToolSeq(e.target.value.toUpperCase().replace(/[^ATGCU]/g, ''))}
+              onChange={(e) => setToolSeq(e.target.value.toUpperCase().replace(/U/g, 'T').replace(/[^ATGC]/g, ''))}
               placeholder="Paste sequence..."
             />
             <button
@@ -617,7 +701,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
                 className="tools-sequence-input font-mono"
                 style={{ width: '100%', height: '80px', marginTop: 8 }}
                 value={targetAlignSeq}
-                onChange={(e) => setTargetAlignSeq(e.target.value.toUpperCase().replace(/[^ATGCU]/g, ''))}
+                onChange={(e) => setTargetAlignSeq(e.target.value.toUpperCase().replace(/U/g, 'T').replace(/[^ATGC]/g, ''))}
                 placeholder="Paste second sequence here..."
               />
             </div>
@@ -657,7 +741,7 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
                 className="tools-sequence-input font-mono"
                 style={{ width: '100%', marginTop: 8 }}
                 value={primerSeq}
-                onChange={(e) => setPrimerSeq(e.target.value.toUpperCase().replace(/[^ATGCU]/g, ''))}
+                onChange={(e) => setPrimerSeq(e.target.value.toUpperCase().replace(/U/g, 'T').replace(/[^ATGC]/g, ''))}
                 placeholder="e.g., GACTGATC..."
               />
             </div>

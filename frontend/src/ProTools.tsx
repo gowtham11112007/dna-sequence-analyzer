@@ -53,7 +53,7 @@ const DNA_COMPLEMENT: Record<string, string> = {
 }
 
 export default function ProTools({ currentSequence, onLoadSequence }: ProToolsProps) {
-  const [activeTab, setActiveTab] = useState<'revcomp' | 'orf' | 'enzymes' | 'synthetic' | 'mutagenesis' | 'alignment' | 'primer'>('revcomp')
+  const [activeTab, setActiveTab] = useState<'revcomp' | 'orf' | 'enzymes' | 'synthetic' | 'mutagenesis' | 'alignment' | 'primer' | 'translation' | 'gcskew' | 'kmer'>('revcomp')
   const [toolSeq, setToolSeq] = useState<string>(currentSequence || 'ATGGTGCATCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCC')
 
   React.useEffect(() => {
@@ -237,6 +237,60 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
     return { gcPerc, tm, length: primerSeq.length, hasHairpinRisk }
   }, [primerSeq])
 
+  // --- TRANSLATION SIMULATOR ---
+  const [transFrame, setTransFrame] = useState<number>(1)
+  
+  const rawTranslation = useMemo(() => {
+    if (!toolSeq) return ''
+    let seq = toolSeq.replace(/U/g, 'T')
+    if (transFrame < 0) {
+      seq = seq.split('').map(b => DNA_COMPLEMENT[b] || b).reverse().join('')
+    }
+    const offset = Math.abs(transFrame) - 1
+    let peptide = ''
+    for (let i = offset; i <= seq.length - 3; i += 3) {
+      const codon = seq.slice(i, i + 3)
+      peptide += CODON_TABLE[codon] || '?'
+    }
+    return peptide
+  }, [toolSeq, transFrame])
+
+  // --- GC SKEW & MELTING CALCULATOR ---
+  const gcSkewStats = useMemo(() => {
+    if (!toolSeq) return null
+    let gCount = 0
+    let cCount = 0
+    for (const b of toolSeq) {
+      if (b === 'G') gCount++
+      if (b === 'C') cCount++
+    }
+    const totalGC = gCount + cCount
+    const gcSkew = totalGC === 0 ? 0 : (gCount - cCount) / totalGC
+    const gcPerc = ((totalGC / toolSeq.length) * 100).toFixed(1)
+    
+    return {
+      gCount,
+      cCount,
+      totalGC,
+      gcSkew: gcSkew.toFixed(3),
+      gcPerc,
+    }
+  }, [toolSeq])
+
+  // --- K-MER FREQUENCY COUNTER ---
+  const [kmerSize, setKmerSize] = useState<number>(3)
+  
+  const kmerFrequencies = useMemo(() => {
+    if (!toolSeq || toolSeq.length < kmerSize) return []
+    const counts: Record<string, number> = {}
+    for (let i = 0; i <= toolSeq.length - kmerSize; i++) {
+      const kmer = toolSeq.slice(i, i + kmerSize)
+      counts[kmer] = (counts[kmer] || 0) + 1
+    }
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1])
+    return sorted.slice(0, 10) // Top 10 kmers
+  }, [toolSeq, kmerSize])
+
   return (
     <div className="pro-tools-container animate-in">
       {/* Header Banner */}
@@ -278,7 +332,10 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
         <div className="tools-tabs">
           {[
             { id: 'revcomp', label: '🔄 Reverse Complement', badge: null },
+            { id: 'translation', label: '🧬 Raw Translation', badge: null },
             { id: 'orf', label: '🔍 6-Frame ORF Finder', badge: orfResults.length },
+            { id: 'gcskew', label: '🧮 GC Skew Profile', badge: null },
+            { id: 'kmer', label: '🔎 K-mer Counter', badge: null },
             { id: 'enzymes', label: '✂️ Restriction Cut Sites', badge: restrictionMatches.length },
             { id: 'alignment', label: '🧬 Sequence Alignment', badge: null },
             { id: 'primer', label: '🎯 Primer Design', badge: null },
@@ -571,6 +628,90 @@ export default function ProTools({ currentSequence, onLoadSequence }: ProToolsPr
           ) : (
              <div className="empty-tool-state" style={{ marginTop: 20 }}>Enter at least 5 nucleotides to calculate analytics.</div>
           )}
+        </div>
+      )}
+      {activeTab === 'translation' && (
+        <div className="tool-view-panel glass-card animate-in">
+          <h3 className="panel-title">🧬 Raw Translation Simulator</h3>
+          <p className="panel-desc">Directly translates the raw DNA sequence into an amino acid chain, bypassing ORF start/stop logic. Useful for short peptide fragments.</p>
+          
+          <div className="mut-controls">
+            <div className="mut-field">
+              <label>Reading Frame:</label>
+              <select value={transFrame} onChange={(e) => setTransFrame(Number(e.target.value))}>
+                <option value={1}>Frame +1 (Forward)</option>
+                <option value={2}>Frame +2 (Forward)</option>
+                <option value={3}>Frame +3 (Forward)</option>
+                <option value={-1}>Frame -1 (Reverse)</option>
+                <option value={-2}>Frame -2 (Reverse)</option>
+                <option value={-3}>Frame -3 (Reverse)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="simulated-output-box glass-card animate-in" style={{ marginTop: 20 }}>
+            <div className="sim-header">
+              <span>TRANSLATED PEPTIDE (Frame {transFrame > 0 ? '+' : ''}{transFrame})</span>
+              <button type="button" className="btn-copy-mini" onClick={() => navigator.clipboard.writeText(rawTranslation)}>
+                📋 Copy
+              </button>
+            </div>
+            <div className="sim-seq font-mono" style={{ padding: 16, wordBreak: 'break-all' }}>
+              {rawTranslation || 'No translation possible.'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'gcskew' && gcSkewStats && (
+        <div className="tool-view-panel glass-card animate-in">
+          <h3 className="panel-title">🧮 GC Skew & Melting Profile Calculator</h3>
+          <p className="panel-desc">Calculates the GC skew <code>(G - C) / (G + C)</code> to help identify origins of replication and analyze thermodynamic stability.</p>
+
+          <div className="enzyme-results-grid" style={{ marginTop: 20 }}>
+            <div className="enzyme-card">
+              <div className="enz-header"><span className="enz-name">GC Skew Ratio</span></div>
+              <div className="enz-desc" style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 'bold' }}>{gcSkewStats.gcSkew}</div>
+              <div className="enz-desc" style={{ fontSize: '0.75rem', marginTop: 4 }}>(G - C) / (G + C)</div>
+            </div>
+            <div className="enzyme-card">
+              <div className="enz-header"><span className="enz-name">Total GC Content</span></div>
+              <div className="enz-desc" style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 'bold' }}>{gcSkewStats.gcPerc}%</div>
+              <div className="enz-desc" style={{ fontSize: '0.75rem', marginTop: 4 }}>Total: {gcSkewStats.totalGC} bases</div>
+            </div>
+            <div className="enzyme-card">
+              <div className="enz-header"><span className="enz-name">Guanine / Cytosine</span></div>
+              <div className="enz-desc" style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 'bold' }}>{gcSkewStats.gCount} / {gcSkewStats.cCount}</div>
+              <div className="enz-desc" style={{ fontSize: '0.75rem', marginTop: 4 }}>G and C raw counts</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'kmer' && (
+        <div className="tool-view-panel glass-card animate-in">
+          <h3 className="panel-title">🔎 K-mer / Motif Frequency Counter</h3>
+          <p className="panel-desc">Scans the sequence to find the most frequent repeating sub-sequences (k-mers). Useful for discovering motifs.</p>
+
+          <div className="mut-controls">
+            <div className="mut-field">
+              <label>K-mer Size (Length):</label>
+              <input type="number" min={2} max={12} value={kmerSize} onChange={(e) => setKmerSize(Number(e.target.value))} />
+            </div>
+          </div>
+
+          <div className="enzyme-results-grid" style={{ marginTop: 20 }}>
+            {kmerFrequencies.length > 0 ? kmerFrequencies.map(([kmer, count], idx) => (
+              <div key={idx} className="enzyme-card">
+                <div className="enz-header">
+                  <span className="enz-name font-mono">{kmer}</span>
+                  <span className="enz-cut-badge badge-cut">{count}x</span>
+                </div>
+              </div>
+            )) : (
+              <div className="empty-tool-state">Sequence is too short for this K-mer size.</div>
+            )}
+          </div>
         </div>
       )}
     </div>

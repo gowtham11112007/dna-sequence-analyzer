@@ -1,15 +1,11 @@
 /**
  * App — root component for the DNA Sequence Analyzer.
- * Features a Professional Dashboard Architecture:
- *   • Global Sidebar Navigation (Desktop) & Hamburger Drawer (Mobile)
- *   • Screen 1: Sequence Builder & Biophysics Analytics
- *   • Screen 2: Pro Biological Sequence & Function Library
- *   • Screen 3: Pro Bioinformatic Function Suite (RevComp, ORF, Cut Sites, Alignment, Primer)
- *   • Screen 4: Dedicated Prediction Results View
- *   • Screen 5: 64-Codon Genetic Reference Matrix
+ * Features a Core Workflow via Bottom Dock and Extra Features via Top Menu Bar.
+ *   • Bottom Dock: Builder, Library, Results
+ *   • Top Menu Bar: Pro Tool Suite, Codon Matrix, About
  */
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import SequenceBuilder from './SequenceBuilder'
 import ResultsDisplay from './ResultsDisplay'
 import DnaHelixCanvas from './DnaHelixCanvas'
@@ -20,6 +16,8 @@ import SequenceLibrary from './SequenceLibrary'
 import ProTools from './ProTools'
 import { analyzeDNA } from './api'
 import type { AnalyzeResult } from './api'
+import Dock from './Dock'
+import type { DockItemData } from './Dock'
 
 export type ScreenType = 'builder' | 'library' | 'protools' | 'results' | 'codons'
 
@@ -27,7 +25,6 @@ export default function App() {
   // --- State ---
   const [sampleSeq, setSampleSeq] = useState('')
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('builder')
-  const [sidebarOpen, setSidebarOpen] = useState(false) // For mobile hamburger
 
   const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -35,12 +32,6 @@ export default function App() {
 
   // --- Validation ---
   const isValid = sampleSeq.length >= 3
-
-  // --- Mobile Sidebar Handling ---
-  useEffect(() => {
-    // Close sidebar automatically on screen change (useful for mobile)
-    setSidebarOpen(false)
-  }, [currentScreen])
 
   // --- Submit handler (triggers analysis and navigates to Results screen) ---
   const handleSubmit = useCallback(async () => {
@@ -68,196 +59,174 @@ export default function App() {
     setCurrentScreen('builder')
   }, [])
 
-  const navItems = [
-    { id: 'builder', icon: '🧬', label: 'Sequence Builder' },
-    { id: 'results', icon: '📊', label: 'Analysis Results' },
-    { id: 'library', icon: '📚', label: 'Sample Library' },
-    { id: 'protools', icon: '⚡', label: 'Pro Tool Suite' },
-    { id: 'codons', icon: '📖', label: 'Codon Matrix' },
-  ]
+  // --- Core Dock navigation items (memoized for Dock component) ---
+  const dockItems: DockItemData[] = useMemo(
+    () => [
+      {
+        icon: <span style={{ fontSize: 22 }}>🧬</span>,
+        label: 'Builder',
+        onClick: () => setCurrentScreen('builder'),
+        className: currentScreen === 'builder' ? 'dock-item-active' : '',
+      },
+      {
+        icon: <span style={{ fontSize: 22 }}>📚</span>,
+        label: 'Library',
+        onClick: () => setCurrentScreen('library'),
+        className: currentScreen === 'library' ? 'dock-item-active' : '',
+      },
+      {
+        icon: (
+          <div style={{ position: 'relative' }}>
+            <span style={{ fontSize: 22 }}>📊</span>
+            {analyzeResult && <span className="dock-pulse-dot" style={{ position: 'absolute', top: -4, right: -4, width: 8, height: 8, background: '#34d399', borderRadius: '50%', boxShadow: '0 0 8px #34d399' }} />}
+          </div>
+        ),
+        label: 'Results',
+        onClick: () => setCurrentScreen('results'),
+        className: currentScreen === 'results' ? 'dock-item-active' : '',
+      }
+    ],
+    [currentScreen, analyzeResult]
+  )
 
   return (
-    <div className="app-dashboard">
-      {/* Mobile Hamburger Button */}
-      <button 
-        className="btn-mobile-menu"
-        onClick={() => setSidebarOpen(true)}
-        aria-label="Open Navigation Menu"
-      >
-        ☰ Menu
-      </button>
-
-      {/* Global Sidebar Navigation */}
-      <aside className={`global-sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <button 
-          className="btn-close-sidebar" 
-          onClick={() => setSidebarOpen(false)}
-          aria-label="Close Navigation Menu"
-        >
-          ✕
-        </button>
-
-        <div className="sidebar-header">
-          <div className="sidebar-logo">🧬</div>
-          <h2 className="sidebar-title">DNA Analyzer Pro</h2>
+    <div className="app">
+      {/* 🚀 EXTRA FEATURES TOP MENU BAR */}
+      <div className="top-menu-bar glass-card">
+        <div className="menu-brand">
+          <span className="brand-icon">🧬</span>
+          <span className="brand-name">DNA Analyzer Pro</span>
         </div>
-
-        <nav className="sidebar-nav">
-          <div className="nav-section-title">MAIN WORKFLOW</div>
-          {navItems.slice(0, 2).map((item) => (
-            <button
-              key={item.id}
-              className={`sidebar-nav-item ${currentScreen === item.id ? 'active' : ''}`}
-              onClick={() => setCurrentScreen(item.id as ScreenType)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
-              {item.id === 'results' && analyzeResult && <span className="nav-badge-pulse" />}
-            </button>
-          ))}
-
-          <div className="nav-section-title" style={{ marginTop: 24 }}>ADVANCED FEATURES</div>
-          {navItems.slice(2).map((item) => (
-            <button
-              key={item.id}
-              className={`sidebar-nav-item ${currentScreen === item.id ? 'active' : ''}`}
-              onClick={() => setCurrentScreen(item.id as ScreenType)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="version-badge">v3.0.0 Portfolio Ed.</div>
+        <div className="menu-links">
+          <button 
+            className={`menu-btn ${currentScreen === 'protools' ? 'active' : ''}`}
+            onClick={() => setCurrentScreen('protools')}
+          >
+            ⚡ Pro Tools
+          </button>
+          <button 
+            className={`menu-btn ${currentScreen === 'codons' ? 'active' : ''}`}
+            onClick={() => setCurrentScreen('codons')}
+          >
+            📖 Codon Matrix
+          </button>
         </div>
-      </aside>
+      </div>
 
-      {/* Sidebar Backdrop for Mobile */}
-      {sidebarOpen && (
-        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
+      {/* Header with integrated 3D DNA Canvas Title Background */}
+      <header className="app-header-container" style={{ marginTop: '70px' }}>
+        <DnaHelixCanvas />
+        <div className="header-title-overlay">
+          <div className="title-badge">BIOLOGICAL SEQUENCE PREDICTION</div>
+          <h1>{
+            currentScreen === 'builder' ? 'Sequence Builder' :
+            currentScreen === 'library' ? 'Sample Library' :
+            currentScreen === 'results' ? 'Analysis Results' :
+            currentScreen === 'protools' ? 'Pro Tool Suite' : 'Codon Matrix'
+          }</h1>
+        </div>
+      </header>
+
+      {/* =========================================================
+          SCREEN 1: SEQUENCE BUILDER & BIOPHYSICS ANALYTICS
+         ========================================================= */}
+      {currentScreen === 'builder' && (
+        <div className="screen-view builder-screen animate-in">
+          {/* Sequence builder card */}
+          <div className="glass-card glow-hover-card" style={{ marginBottom: 16 }}>
+            <SequenceBuilder
+              sequence={sampleSeq}
+              onSequenceChange={setSampleSeq}
+              label="DNA Sequence Builder"
+            />
+          </div>
+
+          {/* Live Biophysical Analytics (GC Content, Tm, Molecular Weight) */}
+          <SequenceAnalytics sequence={sampleSeq} />
+
+          {/* Submit button -> Navigates to Results View */}
+          <button
+            className="btn-submit pulse-glow-btn big-mobile-btn"
+            onClick={handleSubmit}
+            disabled={!isValid || loading}
+            type="button"
+            style={{ marginTop: 20 }}
+          >
+            <span className="btn-content">
+              {loading ? (
+                <>⚡ Executing Prediction Pipeline...</>
+              ) : (
+                <>🧪 Analyze Sequence & Predict Protein →</>
+              )}
+            </span>
+          </button>
+        </div>
       )}
 
-      {/* Main Content Area */}
-      <main className="dashboard-main-content">
-        {/* Header with integrated 3D DNA Canvas Title Background */}
-        <header className="dashboard-header-container">
-          <DnaHelixCanvas />
-          <div className="header-title-overlay">
-            <div className="title-badge">PREDICTION PIPELINE</div>
-            <h1>{navItems.find(n => n.id === currentScreen)?.label || 'DNA Analyzer'}</h1>
-          </div>
-        </header>
+      {/* =========================================================
+          SCREEN 2: PRO SAMPLE & FUNCTION LIBRARY
+         ========================================================= */}
+      {currentScreen === 'library' && (
+        <div className="screen-view library-screen animate-in">
+          <SequenceLibrary onSelectSample={handleLoadSequence} />
+        </div>
+      )}
 
-        <div className="dashboard-screen-container">
-          {/* =========================================================
-              SCREEN 1: SEQUENCE BUILDER & BIOPHYSICS ANALYTICS
-            ========================================================= */}
-          {currentScreen === 'builder' && (
-            <div className="screen-view builder-screen animate-in">
-              <div className="glass-card glow-hover-card" style={{ marginBottom: 16 }}>
-                <SequenceBuilder
-                  sequence={sampleSeq}
-                  onSequenceChange={setSampleSeq}
-                  label="DNA Sequence Builder"
-                />
-              </div>
+      {/* =========================================================
+          SCREEN 3: PRO BIOINFORMATIC FUNCTION SUITE (Extra Feature)
+         ========================================================= */}
+      {currentScreen === 'protools' && (
+        <div className="screen-view protools-screen animate-in">
+          <ProTools currentSequence={sampleSeq} onLoadSequence={handleLoadSequence} />
+        </div>
+      )}
 
-              <SequenceAnalytics sequence={sampleSeq} />
+      {/* =========================================================
+          SCREEN 4: DEDICATED PREDICTION RESULTS VIEW
+         ========================================================= */}
+      {currentScreen === 'results' && (
+        <div className="screen-view results-screen animate-in">
+          {/* Results display panel — full width */}
+          <ResultsDisplay
+            analyzeResult={analyzeResult}
+            compareResult={null}
+            loading={loading}
+            error={error}
+          />
 
-              <button
-                className="btn-submit pulse-glow-btn big-mobile-btn"
-                onClick={handleSubmit}
-                disabled={!isValid || loading}
-                type="button"
-                style={{ marginTop: 24 }}
-              >
-                <span className="btn-content">
-                  {loading ? (
-                    <>⚡ Executing Prediction Pipeline...</>
-                  ) : (
-                    <>🧪 Analyze Sequence & Predict Protein →</>
-                  )}
-                </span>
-              </button>
-
-              <div className="builder-footer-tip" onClick={() => setCurrentScreen('library')}>
-                📚 Explore real-world DNA, RNA, and Protein presets in the Sample Library ➔
-              </div>
-            </div>
-          )}
-
-          {/* =========================================================
-              SCREEN 2: PRO SAMPLE & FUNCTION LIBRARY
-            ========================================================= */}
-          {currentScreen === 'library' && (
-            <div className="screen-view library-screen animate-in">
-              <SequenceLibrary onSelectSample={handleLoadSequence} />
-            </div>
-          )}
-
-          {/* =========================================================
-              SCREEN 3: PRO BIOINFORMATIC FUNCTION SUITE
-            ========================================================= */}
-          {currentScreen === 'protools' && (
-            <div className="screen-view protools-screen animate-in">
-              <ProTools currentSequence={sampleSeq} onLoadSequence={handleLoadSequence} />
-            </div>
-          )}
-
-          {/* =========================================================
-              SCREEN 4: DEDICATED PREDICTION RESULTS VIEW
-            ========================================================= */}
-          {currentScreen === 'results' && (
-            <div className="screen-view results-screen animate-in">
-              <div className="view-action-bar">
-                <button
-                  className="btn-back-nav"
-                  onClick={() => setCurrentScreen('builder')}
-                  type="button"
-                >
-                  ← Edit DNA Sequence
-                </button>
-              </div>
-
-              <ResultsDisplay
+          {/* Export section inlined at the bottom of Results */}
+          {analyzeResult && sampleSeq.length > 0 && (
+            <div className="results-inline-export animate-in">
+              <FastaExporter
+                sampleSeq={sampleSeq}
                 analyzeResult={analyzeResult}
-                compareResult={null}
-                loading={loading}
-                error={error}
               />
-
-              {analyzeResult && sampleSeq.length > 0 && (
-                <div className="results-inline-export animate-in">
-                  <FastaExporter
-                    sampleSeq={sampleSeq}
-                    analyzeResult={analyzeResult}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* =========================================================
-              SCREEN 5: 64-CODON GENETIC MATRIX REFERENCE
-            ========================================================= */}
-          {currentScreen === 'codons' && (
-            <div className="screen-view codons-screen animate-in">
-              <div className="view-action-bar">
-                <button
-                  className="btn-back-nav"
-                  onClick={() => setCurrentScreen('builder')}
-                  type="button"
-                >
-                  ← Back to Sequence Builder
-                </button>
-              </div>
-              <CodonWheel activeSequence={sampleSeq} />
             </div>
           )}
         </div>
-      </main>
+      )}
+
+      {/* =========================================================
+          SCREEN 5: 64-CODON GENETIC MATRIX REFERENCE (Extra Feature)
+         ========================================================= */}
+      {currentScreen === 'codons' && (
+        <div className="screen-view codons-screen animate-in">
+          <CodonWheel activeSequence={sampleSeq} />
+        </div>
+      )}
+
+      {/* =========================================================
+          CORE NAVIGATION DOCK (Bottom Menu Bar)
+         ========================================================= */}
+      <div className="dock-nav-wrapper">
+        <Dock
+          items={dockItems}
+          panelHeight={64}
+          baseItemSize={48}
+          magnification={68}
+          distance={150}
+        />
+      </div>
     </div>
   )
 }

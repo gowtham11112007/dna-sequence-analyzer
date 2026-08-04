@@ -86,6 +86,49 @@ export default function Diagrams() {
           </div>
         </div>
 
+        {/* 20 Amino Acids Structural Diagrams */}
+        <div className="glass-card" style={{ padding: 24 }}>
+          <h3 style={{ marginBottom: 8 }}>🧪 20 Standard Amino Acids Structural Diagrams</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 20 }}>
+            Chemical side-chain (R-group) structure breakdown categorized by physical properties.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+            {[
+              { name: 'Ala (A) - Alanine', class: 'Nonpolar', formula: 'R = -CH3', color: '#818cf8' },
+              { name: 'Val (V) - Valine', class: 'Nonpolar', formula: 'R = -CH(CH3)2', color: '#818cf8' },
+              { name: 'Leu (L) - Leucine', class: 'Nonpolar', formula: 'R = -CH2-CH(CH3)2', color: '#818cf8' },
+              { name: 'Ile (I) - Isoleucine', class: 'Nonpolar', formula: 'R = -CH(CH3)-CH2-CH3', color: '#818cf8' },
+              { name: 'Met (M) - Methionine', class: 'Nonpolar', formula: 'R = -CH2-CH2-S-CH3', color: '#818cf8' },
+              { name: 'Phe (F) - Phenylalanine', class: 'Nonpolar', formula: 'R = -CH2-C6H5 (Aromatic)', color: '#818cf8' },
+              { name: 'Trp (W) - Tryptophan', class: 'Nonpolar', formula: 'R = Indole Ring', color: '#818cf8' },
+              { name: 'Pro (P) - Proline', class: 'Nonpolar', formula: 'R = Pyrrolidine Ring', color: '#818cf8' },
+              { name: 'Gly (G) - Glycine', class: 'Nonpolar', formula: 'R = -H', color: '#818cf8' },
+              
+              { name: 'Ser (S) - Serine', class: 'Polar', formula: 'R = -CH2-OH', color: '#34d399' },
+              { name: 'Thr (T) - Threonine', class: 'Polar', formula: 'R = -CH(OH)-CH3', color: '#34d399' },
+              { name: 'Cys (C) - Cysteine', class: 'Polar', formula: 'R = -CH2-SH', color: '#34d399' },
+              { name: 'Tyr (Y) - Tyrosine', class: 'Polar', formula: 'R = -CH2-C6H4-OH', color: '#34d399' },
+              { name: 'Asn (N) - Asparagine', class: 'Polar', formula: 'R = -CH2-CO-NH2', color: '#34d399' },
+              { name: 'Gln (Q) - Glutamine', class: 'Polar', formula: 'R = -CH2-CH2-CO-NH2', color: '#34d399' },
+
+              { name: 'Asp (D) - Aspartic Acid', class: 'Acidic (-)', formula: 'R = -CH2-COO⁻', color: '#f87171' },
+              { name: 'Glu (E) - Glutamic Acid', class: 'Acidic (-)', formula: 'R = -CH2-CH2-COO⁻', color: '#f87171' },
+
+              { name: 'Lys (K) - Lysine', class: 'Basic (+)', formula: 'R = -(CH2)4-NH3⁺', color: '#60a5fa' },
+              { name: 'Arg (R) - Arginine', class: 'Basic (+)', formula: 'R = -(CH2)3-NH-C(=NH2⁺)-NH2', color: '#60a5fa' },
+              { name: 'His (H) - Histidine', class: 'Basic (+)', formula: 'R = Imidazole Ring', color: '#60a5fa' },
+            ].map((aa, i) => (
+              <div key={i} style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${aa.color}44`, borderRadius: 8, padding: 12 }}>
+                <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#fff' }}>{aa.name}</div>
+                <div style={{ fontSize: '0.75rem', color: aa.color, fontWeight: 'bold', margin: '4px 0' }}>{aa.class}</div>
+                <div style={{ fontFamily: 'monospace', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: 4, marginTop: 6, color: '#e2e8f0' }}>
+                  {aa.formula}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -250,6 +250,24 @@ export default function ResultsDisplay({
           </div>
         )}
 
+        {analyzeResult.uniprot_enrichment && (
+          <div className="uniprot-enriched-box animate-in" style={{ marginTop: 16, background: 'rgba(56, 189, 248, 0.05)', border: '1px solid rgba(56, 189, 248, 0.2)', padding: 16, borderRadius: 8 }}>
+            <h4 style={{ color: '#38bdf8', marginBottom: 8, fontSize: '0.9rem' }}>🌐 Official UniProt Biological Database Record</h4>
+            <div className="protein-detail-row" style={{ marginBottom: 6 }}>
+              <span className="detail-label" style={{ fontWeight: 'bold', color: 'var(--text-secondary)' }}>Protein Name: </span>
+              <span className="detail-value" style={{ color: '#fff' }}>{analyzeResult.uniprot_enrichment.protein_name}</span>
+            </div>
+            <div className="protein-detail-row" style={{ marginBottom: 6 }}>
+              <span className="detail-label" style={{ fontWeight: 'bold', color: 'var(--text-secondary)' }}>Organism: </span>
+              <span className="detail-value" style={{ color: '#fff' }}>🧫 {analyzeResult.uniprot_enrichment.organism}</span>
+            </div>
+            <div className="protein-detail-row">
+              <span className="detail-label" style={{ fontWeight: 'bold', color: 'var(--text-secondary)' }}>Full Biological Function: </span>
+              <p className="detail-value" style={{ color: '#e2e8f0', marginTop: 4, lineHeight: 1.5, fontSize: '0.88rem' }}>{analyzeResult.uniprot_enrichment.function_description}</p>
+            </div>
+          </div>
+        )}
+
         {/* Clean Interactive Action Buttons Bar for details */}
         <div className="results-action-pills" style={{ marginTop: 16 }}>
           <button
